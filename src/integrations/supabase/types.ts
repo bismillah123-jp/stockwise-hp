@@ -121,6 +121,36 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_models: {
+        Row: {
+          brand: string
+          color: string | null
+          created_at: string
+          id: string
+          model: string
+          storage_capacity: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand: string
+          color?: string | null
+          created_at?: string
+          id?: string
+          model: string
+          storage_capacity?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string
+          color?: string | null
+          created_at?: string
+          id?: string
+          model?: string
+          storage_capacity?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       phones: {
         Row: {
           brand: string
@@ -181,6 +211,99 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_entries: {
+        Row: {
+          add_stock: number
+          adjustment: number
+          created_at: string
+          date: string
+          id: string
+          imei: string | null
+          incoming: number
+          location_id: string
+          morning_stock: number
+          night_stock: number
+          notes: string | null
+          phone_model_id: string
+          returns: number
+          sold: number
+          updated_at: string
+        }
+        Insert: {
+          add_stock?: number
+          adjustment?: number
+          created_at?: string
+          date?: string
+          id?: string
+          imei?: string | null
+          incoming?: number
+          location_id: string
+          morning_stock?: number
+          night_stock?: number
+          notes?: string | null
+          phone_model_id: string
+          returns?: number
+          sold?: number
+          updated_at?: string
+        }
+        Update: {
+          add_stock?: number
+          adjustment?: number
+          created_at?: string
+          date?: string
+          id?: string
+          imei?: string | null
+          incoming?: number
+          location_id?: string
+          morning_stock?: number
+          night_stock?: number
+          notes?: string | null
+          phone_model_id?: string
+          returns?: number
+          sold?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_entries_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_entries_phone_model_id_fkey"
+            columns: ["phone_model_id"]
+            isOneToOne: false
+            referencedRelation: "phone_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_locations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stock_transactions: {
         Row: {
           created_at: string
@@ -235,12 +358,66 @@ export type Database = {
           },
         ]
       }
+      stock_transactions_log: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          new_night_stock: number
+          notes: string | null
+          previous_night_stock: number
+          quantity: number
+          stock_entry_id: string
+          transaction_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_night_stock: number
+          notes?: string | null
+          previous_night_stock: number
+          quantity: number
+          stock_entry_id: string
+          transaction_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_night_stock?: number
+          notes?: string | null
+          previous_night_stock?: number
+          quantity?: number
+          stock_entry_id?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transactions_log_stock_entry_id_fkey"
+            columns: ["stock_entry_id"]
+            isOneToOne: false
+            referencedRelation: "stock_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_night_stock: {
+        Args: {
+          p_add_stock: number
+          p_adjustment: number
+          p_incoming: number
+          p_morning_stock: number
+          p_returns: number
+          p_sold: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
