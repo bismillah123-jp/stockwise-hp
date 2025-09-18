@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
 import { ManualStockInput } from "./ManualStockInput";
 import { StockAnalytics } from "./StockAnalytics";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface DashboardStats {
   todaySales: number;
@@ -99,38 +101,42 @@ export function StockDashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/30">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 lg:px-6 py-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 HP Stock Management
               </h1>
               <p className="text-muted-foreground mt-1">Real-time inventory tracking & analytics</p>
             </div>
-            <div className="flex items-center gap-4">
-              <select 
-                value={selectedLocation} 
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="bg-background border border-border rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="all">All Locations</option>
-                {locations?.map(location => (
-                  <option key={location.id} value={location.name}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-              <Badge variant="secondary" className="bg-gradient-to-r from-primary/20 to-accent/20">
-                Live Data
-              </Badge>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations?.map(location => (
+                    <SelectItem key={location.id} value={location.name}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-gradient-to-r from-primary/20 to-accent/20">
+                  Live Data
+                </Badge>
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex gap-2 mb-6">
+      <div className="container mx-auto px-4 lg:px-6 py-4">
+        <div className="flex flex-col sm:flex-row gap-2 mb-6 overflow-x-auto">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
             { id: 'table', label: 'Stock Table', icon: Package },
@@ -142,10 +148,10 @@ export function StockDashboard() {
                 key={tab.id}
                 variant={activeTab === tab.id ? "default" : "ghost"}
                 onClick={() => setActiveTab(tab.id as any)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-sm whitespace-nowrap"
               >
                 <Icon className="w-4 h-4" />
-                {tab.label}
+                <span className="hidden sm:inline">{tab.label}</span>
               </Button>
             );
           })}
@@ -155,7 +161,7 @@ export function StockDashboard() {
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
               {[
                 {
                   title: "Today's Sales",

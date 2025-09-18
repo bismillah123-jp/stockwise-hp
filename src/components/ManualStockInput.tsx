@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Truck, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AddLocationDialog } from "./AddLocationDialog";
+import { AddPhoneModelDialog } from "./AddPhoneModelDialog";
 
 interface ManualStockInputProps {
   onSuccess?: () => void;
@@ -28,6 +31,7 @@ interface Location {
 
 export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
   const [inputType, setInputType] = useState<'add_stock' | 'incoming'>('add_stock');
+  const [selectedBrand, setSelectedBrand] = useState('');
   const [formData, setFormData] = useState({
     location_id: '',
     phone_model_id: '',
@@ -53,19 +57,37 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
     }
   });
 
-  // Fetch phone models
+  // Fetch unique brands
+  const { data: brands } = useQuery({
+    queryKey: ['brands'],
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase
+        .from('phone_models')
+        .select('brand')
+        .order('brand');
+      
+      if (error) throw error;
+      const uniqueBrands = [...new Set(data?.map(item => item.brand) || [])];
+      return uniqueBrands;
+    }
+  });
+
+  // Fetch phone models for selected brand
   const { data: phoneModels } = useQuery({
-    queryKey: ['phone-models'],
+    queryKey: ['phone-models', selectedBrand],
     queryFn: async (): Promise<PhoneModel[]> => {
+      if (!selectedBrand) return [];
+      
       const { data, error } = await supabase
         .from('phone_models')
         .select('*')
-        .order('brand', { ascending: true })
+        .eq('brand', selectedBrand)
         .order('model', { ascending: true });
       
       if (error) throw error;
       return data || [];
-    }
+    },
+    enabled: !!selectedBrand
   });
 
   // Mutation for stock input
@@ -152,6 +174,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
       });
       
       // Reset form
+      setSelectedBrand('');
       setFormData({
         location_id: '',
         phone_model_id: '',
@@ -189,9 +212,9 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-6">
       {/* Input Type Selection */}
-      <div className="flex gap-2 lg:col-span-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Button
           type="button"
           variant={inputType === 'add_stock' ? 'default' : 'outline'}
@@ -212,44 +235,76 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="lg:col-span-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Management Actions */}
+      <div className="flex flex-col sm:flex-row gap-2 p-4 bg-muted/50 rounded-lg">
+        <AddLocationDialog />
+        <AddPhoneModelDialog />
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Location */}
           <div className="space-y-2">
             <Label htmlFor="location">Location *</Label>
-            <select
-              id="location"
-              value={formData.location_id}
-              onChange={(e) => setFormData({...formData, location_id: e.target.value})}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-              required
+            <Select 
+              value={formData.location_id} 
+              onValueChange={(value) => setFormData({...formData, location_id: value})}
             >
-              <option value="">Select location</option>
-              {locations?.map(location => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Select location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations?.map(location => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Brand Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="brand">Brand *</Label>
+            <Select 
+              value={selectedBrand} 
+              onValueChange={(value) => {
+                setSelectedBrand(value);
+                setFormData({...formData, phone_model_id: ''});
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select brand" />
+              </SelectTrigger>
+              <SelectContent>
+                {brands?.map(brand => (
+                  <SelectItem key={brand} value={brand}>
+                    {brand}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Phone Model */}
           <div className="space-y-2">
             <Label htmlFor="phone_model">Phone Model *</Label>
-            <select
-              id="phone_model"
-              value={formData.phone_model_id}
-              onChange={(e) => setFormData({...formData, phone_model_id: e.target.value})}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-              required
+            <Select 
+              value={formData.phone_model_id} 
+              onValueChange={(value) => setFormData({...formData, phone_model_id: value})}
+              disabled={!selectedBrand}
             >
-              <option value="">Select model</option>
-              {phoneModels?.map(model => (
-                <option key={model.id} value={model.id}>
-                  {model.brand} {model.model} {model.storage_capacity} - {model.color}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder={!selectedBrand ? "Select brand first" : "Select model"} />
+              </SelectTrigger>
+              <SelectContent>
+                {phoneModels?.map(model => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.model} {model.storage_capacity} - {model.color}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* IMEI */}
@@ -279,7 +334,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
         </div>
 
         {/* Notes */}
-        <div className="space-y-2 mt-4">
+        <div className="space-y-2 col-span-full">
           <Label htmlFor="notes">Notes</Label>
           <Textarea
             id="notes"
@@ -291,11 +346,11 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
         </div>
 
         {/* Submit Button */}
-        <div className="mt-6">
+        <div className="col-span-full">
           <Button 
             type="submit" 
-            disabled={stockMutation.isPending}
-            className="flex items-center gap-2"
+            disabled={stockMutation.isPending || !selectedBrand}
+            className="w-full sm:w-auto flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
             {stockMutation.isPending ? 'Processing...' : 
