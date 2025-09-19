@@ -100,18 +100,16 @@ export function StockDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/30">
-        <div className="container mx-auto px-4 lg:px-6 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                HP Stock Management
-              </h1>
-              <p className="text-muted-foreground mt-1">Real-time inventory tracking & analytics</p>
+      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="flex h-16 items-center justify-between">
+            <div className="mr-6">
+              <h1 className="text-xl font-bold">Stock Management</h1>
+              <p className="text-sm text-muted-foreground">Real-time inventory tracking</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-4">
               <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] text-sm">
                   <SelectValue placeholder="All Locations" />
                 </SelectTrigger>
                 <SelectContent>
@@ -123,161 +121,137 @@ export function StockDashboard() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="bg-gradient-to-r from-primary/20 to-accent/20">
-                  Live Data
-                </Badge>
-                <ThemeToggle />
-              </div>
+              <ThemeToggle />
+              <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
+                Logout
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Navigation Tabs - Desktop (top) */}
-      <div className="hidden md:block border-b border-border bg-card/30">
-        <div className="container mx-auto px-4 lg:px-6 py-3">
-          <div className="flex gap-2 overflow-x-auto">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-              { id: 'table', label: 'Stock Table', icon: Package },
-              { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <Button
-                  key={tab.id}
-                  variant={activeTab === tab.id ? "default" : "ghost"}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className="flex items-center gap-2 text-sm whitespace-nowrap"
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="flex-1 container mx-auto px-4 lg:px-6 py-4 pb-20 md:pb-4">
-        {/* Dashboard View */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <main className="flex-1">
+        {/* Navigation Tabs */}
+        <div className="border-b border-border">
+          <div className="container mx-auto px-4 lg:px-6">
+            <nav className="flex gap-1 -mb-px">
               {[
-                {
-                  title: "Today's Sales",
-                  value: stats?.todaySales || 0,
-                  icon: TrendingUp,
-                  color: "from-success to-success/80",
-                  loading: statsLoading
-                },
-                {
-                  title: "Night Stock",
-                  value: stats?.totalNightStock || 0,
-                  icon: Package,
-                  color: "from-primary to-accent",
-                  loading: statsLoading
-                },
-                {
-                  title: "Incoming HP",
-                  value: stats?.incomingHP || 0,
-                  icon: Truck,
-                  color: "from-info to-info/80",
-                  loading: statsLoading
-                },
-                {
-                  title: "Discrepancies",
-                  value: stats?.discrepancies || 0,
-                  icon: AlertTriangle,
-                  color: "from-warning to-warning/80",
-                  loading: statsLoading
-                }
-              ].map((kpi, index) => {
-                const Icon = kpi.icon;
+                { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+                { id: 'table', label: 'Stock Table', icon: Package },
+                { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+              ].map((tab) => {
+                const Icon = tab.icon;
                 return (
-                  <Card key={index} className="relative overflow-hidden border-border/50 bg-card/50 backdrop-blur">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${kpi.color} opacity-5`} />
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {kpi.title}
-                      </CardTitle>
-                      <Icon className={`h-5 w-5 bg-gradient-to-br ${kpi.color} bg-clip-text text-transparent`} />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">
-                        {kpi.loading ? (
-                          <div className="animate-pulse bg-muted h-8 w-16 rounded" />
-                        ) : (
-                          kpi.value.toLocaleString('id-ID')
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <Button
+                    key={tab.id}
+                    variant="ghost"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`h-12 rounded-none border-b-2 ${
+                      activeTab === tab.id
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {tab.label}
+                  </Button>
                 );
               })}
-            </div>
-
-            {/* Manual Input Section */}
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  Manual Stock Input
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ManualStockInput onSuccess={() => {
-                  toast({
-                    title: "Stock updated successfully",
-                    description: "The stock entry has been processed.",
-                  });
-                }} />
-              </CardContent>
-            </Card>
+            </nav>
           </div>
-        )}
-
-        {/* Stock Table View */}
-        {activeTab === 'table' && (
-          <StockTable selectedLocation={selectedLocation} />
-        )}
-
-        {/* Analytics View */}
-        {activeTab === 'analytics' && (
-          <StockAnalytics selectedLocation={selectedLocation} />
-        )}
-      </div>
-
-      {/* Mobile Navigation - Bottom */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border">
-        <div className="flex justify-around py-2">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-            { id: 'table', label: 'Table', icon: Package },
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <Button
-                key={tab.id}
-                variant="ghost"
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 flex flex-col items-center gap-1 h-auto py-3 px-2 ${
-                  isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground'
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
-                <span className="text-xs">{tab.label}</span>
-              </Button>
-            );
-          })}
         </div>
-      </div>
+
+        <div className="container mx-auto px-4 lg:px-6 py-6">
+          {/* Dashboard View */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  {
+                    title: "Today's Sales",
+                    value: stats?.todaySales || 0,
+                    icon: TrendingUp,
+                    color: "text-green-500",
+                    loading: statsLoading
+                  },
+                  {
+                    title: "Night Stock",
+                    value: stats?.totalNightStock || 0,
+                    icon: Package,
+                    color: "text-blue-500",
+                    loading: statsLoading
+                  },
+                  {
+                    title: "Incoming HP",
+                    value: stats?.incomingHP || 0,
+                    icon: Truck,
+                    color: "text-purple-500",
+                    loading: statsLoading
+                  },
+                  {
+                    title: "Discrepancies",
+                    value: stats?.discrepancies || 0,
+                    icon: AlertTriangle,
+                    color: "text-yellow-500",
+                    loading: statsLoading
+                  }
+                ].map((kpi, index) => {
+                  const Icon = kpi.icon;
+                  return (
+                    <Card key={index}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">
+                          {kpi.title}
+                        </CardTitle>
+                        <Icon className={`h-5 w-5 ${kpi.color}`} />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">
+                          {kpi.loading ? (
+                            <div className="animate-pulse bg-muted h-8 w-16 rounded" />
+                          ) : (
+                            kpi.value.toLocaleString('id-ID')
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Manual Input Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="w-5 h-5" />
+                    Manual Stock Input
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ManualStockInput onSuccess={() => {
+                    toast({
+                      title: "Stock updated successfully",
+                      description: "The stock entry has been processed.",
+                    });
+                  }} />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Stock Table View */}
+          {activeTab === 'table' && (
+            <StockTable selectedLocation={selectedLocation} />
+          )}
+
+          {/* Analytics View */}
+          {activeTab === 'analytics' && (
+            <StockAnalytics selectedLocation={selectedLocation} />
+          )}
+        </div>
+      </main>
     </div>
   );
 }
