@@ -98,7 +98,7 @@ export function StockDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/30">
         <div className="container mx-auto px-4 lg:px-6 py-4">
@@ -134,29 +134,34 @@ export function StockDashboard() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="container mx-auto px-4 lg:px-6 py-4">
-        <div className="flex flex-col sm:flex-row gap-2 mb-6 overflow-x-auto">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-            { id: 'table', label: 'Stock Table', icon: Package },
-            { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <Button
-                key={tab.id}
-                variant={activeTab === tab.id ? "default" : "ghost"}
-                onClick={() => setActiveTab(tab.id as any)}
-                className="flex items-center gap-2 text-sm whitespace-nowrap"
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </Button>
-            );
-          })}
+      {/* Navigation Tabs - Desktop (top) */}
+      <div className="hidden md:block border-b border-border bg-card/30">
+        <div className="container mx-auto px-4 lg:px-6 py-3">
+          <div className="flex gap-2 overflow-x-auto">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+              { id: 'table', label: 'Stock Table', icon: Package },
+              { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <Button
+                  key={tab.id}
+                  variant={activeTab === tab.id ? "default" : "ghost"}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className="flex items-center gap-2 text-sm whitespace-nowrap"
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </Button>
+              );
+            })}
+          </div>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="flex-1 container mx-auto px-4 lg:px-6 py-4 pb-20 md:pb-4">
         {/* Dashboard View */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
@@ -245,6 +250,33 @@ export function StockDashboard() {
         {activeTab === 'analytics' && (
           <StockAnalytics selectedLocation={selectedLocation} />
         )}
+      </div>
+
+      {/* Mobile Navigation - Bottom */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border">
+        <div className="flex justify-around py-2">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+            { id: 'table', label: 'Table', icon: Package },
+            { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <Button
+                key={tab.id}
+                variant="ghost"
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 flex flex-col items-center gap-1 h-auto py-3 px-2 ${
+                  isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
+                <span className="text-xs">{tab.label}</span>
+              </Button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

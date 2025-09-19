@@ -14,7 +14,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >

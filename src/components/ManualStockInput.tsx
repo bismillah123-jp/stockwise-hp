@@ -108,7 +108,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
         .eq('location_id', formData.location_id)
         .eq('phone_model_id', formData.phone_model_id)
         .eq('imei', formData.imei || null)
-        .single();
+        .maybeSingle();
 
       if (existingEntry) {
         // Update existing entry
