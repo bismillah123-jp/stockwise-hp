@@ -134,7 +134,6 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
           const updateData = inputType === 'add_stock'
             ? {
                 add_stock: existingEntry.add_stock + quantity,
-                morning_stock: existingEntry.morning_stock + quantity,
                 notes: formData.notes || existingEntry.notes
               }
             : {
