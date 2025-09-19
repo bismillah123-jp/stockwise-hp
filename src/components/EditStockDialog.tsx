@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { StockEntry } from "@/types";
+import { Trash2 } from "lucide-react";
 
 interface EditStockDialogProps {
   entry: StockEntry | null;
@@ -78,6 +80,31 @@ export function EditStockDialog({ entry, open, onOpenChange, onSuccess }: EditSt
     editStockMutation.mutate();
   };
 
+  const deleteStockMutation = useMutation({
+    mutationFn: async () => {
+      if (!entry) throw new Error("No stock entry selected");
+      const { error } = await supabase.from('stock_entries').delete().eq('id', entry.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Entry deleted",
+        description: "The stock entry has been permanently deleted.",
+        variant: "destructive"
+      });
+      queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting entry",
+        description: error.message || "An unknown error occurred.",
+        variant: "destructive",
+      });
+    }
+  });
+
   if (!entry) return null;
 
   return (
@@ -131,13 +158,36 @@ export function EditStockDialog({ entry, open, onOpenChange, onSuccess }: EditSt
               rows={3}
             />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={editStockMutation.isPending}>
-              {editStockMutation.isPending ? "Saving..." : "Save Changes"}
-            </Button>
+          <DialogFooter className="sm:justify-between">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete Entry
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the stock entry.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteStockMutation.mutate()} disabled={deleteStockMutation.isPending}>
+                    {deleteStockMutation.isPending ? "Deleting..." : "Yes, delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editStockMutation.isPending}>
+                {editStockMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

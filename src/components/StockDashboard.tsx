@@ -9,7 +9,9 @@ import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3 } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
-import { ManualStockInput } from "./ManualStockInput";
+import { AddStockDialog } from "./AddStockDialog";
+import { AddBackdatedStockDialog } from "./AddBackdatedStockDialog";
+import { TransferStockDialog } from "./TransferStockDialog";
 import { StockAnalytics } from "./StockAnalytics";
 import { ThemeToggle } from "./ThemeToggle";
 import { StatCard } from "./StatCard";
@@ -39,7 +41,15 @@ export function StockDashboard() {
         .eq('date', today);
 
       if (selectedLocation !== 'all') {
-        query = query.eq('stock_locations.name', selectedLocation);
+        const { data: locationData } = await supabase
+          .from('stock_locations')
+          .select('id')
+          .eq('name', selectedLocation)
+          .single();
+
+        if (locationData) {
+          query = query.eq('location_id', locationData.id);
+        }
       }
 
       const { data, error } = await query;
@@ -179,23 +189,22 @@ export function StockDashboard() {
                 />
               </div>
 
-              {/* Manual Input Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    Manual Stock Input
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ManualStockInput onSuccess={() => {
-                    toast({
-                      title: "Stock updated successfully",
-                      description: "The stock entry has been processed.",
-                    });
-                  }} />
-                </CardContent>
-              </Card>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-4">
+                <AddStockDialog onSuccess={() => {
+                  toast({
+                    title: "Stock updated successfully",
+                    description: "The stock entry has been processed.",
+                  });
+                }} />
+                <AddBackdatedStockDialog onSuccess={() => {
+                  toast({
+                    title: "Backdated stock added",
+                    description: "The entry has been saved.",
+                  });
+                }} />
+                <TransferStockDialog />
+              </div>
             </div>
           )}
 
