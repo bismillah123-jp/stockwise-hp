@@ -12,31 +12,8 @@ import { StockTable } from "./StockTable";
 import { ManualStockInput } from "./ManualStockInput";
 import { StockAnalytics } from "./StockAnalytics";
 import { ThemeToggle } from "./ThemeToggle";
-
-interface DashboardStats {
-  todaySales: number;
-  totalNightStock: number;
-  incomingHP: number;
-  discrepancies: number;
-}
-
-interface StockEntry {
-  id: string;
-  date: string;
-  location: string;
-  brand: string;
-  model: string;
-  imei: string | null;
-  color: string | null;
-  morning_stock: number;
-  night_stock: number;
-  incoming: number;
-  add_stock: number;
-  returns: number;
-  sold: number;
-  adjustment: number;
-  notes: string | null;
-}
+import { StatCard } from "./StatCard";
+import { DashboardStats, Location } from "@/types";
 
 export function StockDashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics'>('dashboard');
@@ -86,14 +63,14 @@ export function StockDashboard() {
   // Fetch locations for filter
   const { data: locations } = useQuery({
     queryKey: ['locations'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Location[]> => {
       const { data, error } = await supabase
         .from('stock_locations')
         .select('*')
         .order('name');
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 
@@ -102,14 +79,16 @@ export function StockDashboard() {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 lg:px-6">
-          <div className="flex h-16 items-center justify-between">
-            <div className="mr-6">
-              <h1 className="text-xl font-bold">Stock Management</h1>
-              <p className="text-sm text-muted-foreground">Real-time inventory tracking</p>
+          <div className="flex h-auto min-h-16 flex-col items-start justify-center gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mr-6 flex-shrink-0">
+              <h1 className="text-lg font-bold sm:text-xl">Stock Management</h1>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                Real-time inventory tracking
+              </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-4">
               <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="w-full sm:w-[180px] text-sm">
+                <SelectTrigger className="flex-1 text-sm sm:flex-none sm:w-[180px]">
                   <SelectValue placeholder="All Locations" />
                 </SelectTrigger>
                 <SelectContent>
@@ -121,10 +100,12 @@ export function StockDashboard() {
                   ))}
                 </SelectContent>
               </Select>
-              <ThemeToggle />
-              <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
-                Logout
-              </Button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
+                  Logout
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -168,57 +149,34 @@ export function StockDashboard() {
             <div className="space-y-6">
               {/* KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                  {
-                    title: "Today's Sales",
-                    value: stats?.todaySales || 0,
-                    icon: TrendingUp,
-                    color: "text-green-500",
-                    loading: statsLoading
-                  },
-                  {
-                    title: "Night Stock",
-                    value: stats?.totalNightStock || 0,
-                    icon: Package,
-                    color: "text-blue-500",
-                    loading: statsLoading
-                  },
-                  {
-                    title: "Incoming HP",
-                    value: stats?.incomingHP || 0,
-                    icon: Truck,
-                    color: "text-purple-500",
-                    loading: statsLoading
-                  },
-                  {
-                    title: "Discrepancies",
-                    value: stats?.discrepancies || 0,
-                    icon: AlertTriangle,
-                    color: "text-yellow-500",
-                    loading: statsLoading
-                  }
-                ].map((kpi, index) => {
-                  const Icon = kpi.icon;
-                  return (
-                    <Card key={index}>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          {kpi.title}
-                        </CardTitle>
-                        <Icon className={`h-5 w-5 ${kpi.color}`} />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          {kpi.loading ? (
-                            <div className="animate-pulse bg-muted h-8 w-16 rounded" />
-                          ) : (
-                            kpi.value.toLocaleString('id-ID')
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                <StatCard
+                  title="Today's Sales"
+                  value={stats?.todaySales || 0}
+                  icon={TrendingUp}
+                  color="text-green-500"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Night Stock"
+                  value={stats?.totalNightStock || 0}
+                  icon={Package}
+                  color="text-blue-500"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Incoming HP"
+                  value={stats?.incomingHP || 0}
+                  icon={Truck}
+                  color="text-purple-500"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Discrepancies"
+                  value={stats?.discrepancies || 0}
+                  icon={AlertTriangle}
+                  color="text-yellow-500"
+                  loading={statsLoading}
+                />
               </div>
 
               {/* Manual Input Section */}

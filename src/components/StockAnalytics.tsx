@@ -3,22 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, Package, AlertTriangle, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { TrendData, BrandData } from "@/types";
 
 interface StockAnalyticsProps {
   selectedLocation: string;
-}
-
-interface TrendData {
-  date: string;
-  sales: number;
-  incoming: number;
-  stock: number;
-}
-
-interface BrandData {
-  brand: string;
-  stock: number;
-  sales: number;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--info))'];
@@ -58,26 +46,51 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Group by date and sum values
-      const groupedData = (data || []).reduce((acc, entry) => {
+      // --- Start of new logic ---
+
+      // 1. Group fetched data by date
+      const groupedDataByDate = (data || []).reduce((acc, entry) => {
         const date = entry.date;
         if (!acc[date]) {
-          acc[date] = { date, sales: 0, incoming: 0, stock: 0, count: 0 };
+          acc[date] = { date, sales: 0, incoming: 0, stock: 0 };
         }
         acc[date].sales += entry.sold;
         acc[date].incoming += entry.incoming;
-        acc[date].stock += entry.night_stock;
-        acc[date].count += 1;
+        acc[date].stock += entry.night_stock; // We will average this later if multiple entries exist for a day
         return acc;
-      }, {} as Record<string, TrendData & { count: number }>);
+      }, {} as Record<string, { date: string, sales: number, incoming: number, stock: number }>);
 
-      // Convert to array and calculate averages for stock
-      return Object.values(groupedData).map(item => ({
-        date: new Date(item.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }),
-        sales: item.sales,
-        incoming: item.incoming,
-        stock: Math.round(item.stock / (item.count || 1))
-      }));
+      // 2. Generate all dates for the last 30 days
+      const allDates = [];
+      for (let i = 0; i < 30; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        allDates.push(d.toISOString().split('T')[0]);
+      }
+      allDates.reverse();
+
+      // 3. Create the final trend data array, filling in missing dates
+      const finalTrendData: TrendData[] = allDates.map(dateStr => {
+        if (groupedDataByDate[dateStr]) {
+          const dayData = groupedDataByDate[dateStr];
+          return {
+            date: new Date(dayData.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }),
+            sales: dayData.sales,
+            incoming: dayData.incoming,
+            stock: dayData.stock, // This is total night stock for the day
+          };
+        } else {
+          return {
+            date: new Date(dateStr).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }),
+            sales: 0,
+            incoming: 0,
+            stock: 0, // We can enhance this later to carry over stock
+          };
+        }
+      });
+
+      return finalTrendData;
+      // --- End of new logic ---
     }
   });
 

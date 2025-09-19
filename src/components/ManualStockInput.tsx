@@ -11,26 +11,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AddLocationDialog } from "./AddLocationDialog";
 import { AddPhoneModelDialog } from "./AddPhoneModelDialog";
+import { PhoneModel, Location } from "@/types";
 
 interface ManualStockInputProps {
   onSuccess?: () => void;
 }
 
-interface PhoneModel {
-  id: string;
-  brand: string;
-  model: string;
-  storage_capacity: string | null;
-  color: string | null;
-}
-
-interface Location {
-  id: string;
-  name: string;
-}
-
 export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
-  const [inputType, setInputType] = useState<'add_stock' | 'incoming'>('add_stock');
+  const [inputType, setInputType] = useState<'add_stock' | 'incoming' | 'returns' | 'adjustment'>('add_stock');
   const [selectedBrand, setSelectedBrand] = useState('');
   const [formData, setFormData] = useState({
     location_id: '',
@@ -100,28 +88,29 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
         throw new Error('Please enter a valid quantity');
       }
 
-      // Check if entry exists for today
-      const { data: existingEntry } = await supabase
-        .from('stock_entries')
-        .select('*')
-        .eq('date', today)
-        .eq('location_id', formData.location_id)
-        .eq('phone_model_id', formData.phone_model_id)
-        .eq('imei', formData.imei || null)
-        .maybeSingle();
+      // An entry must exist for returns and adjustments
+      if (inputType === 'returns' || inputType === 'adjustment') {
+        const { data: existingEntry } = await supabase
+          .from('stock_entries')
+          .select('id, returns, adjustment')
+          .eq('date', today)
+          .eq('location_id', formData.location_id)
+          .eq('phone_model_id', formData.phone_model_id)
+          .eq('imei', formData.imei || null)
+          .maybeSingle();
 
-      if (existingEntry) {
-        // Update existing entry
-        const updateData = inputType === 'add_stock' 
-          ? { 
-              add_stock: existingEntry.add_stock + quantity,
-              morning_stock: existingEntry.morning_stock + quantity,
-              notes: formData.notes || existingEntry.notes
-            }
-          : { 
-              incoming: existingEntry.incoming + quantity,
-              notes: formData.notes || existingEntry.notes
-            };
+        if (!existingEntry) {
+          throw new Error('Cannot add returns or adjustments for a stock entry that does not exist today. Please add stock first.');
+        }
+
+        const updateData = {
+          notes: formData.notes || undefined,
+        };
+        if (inputType === 'returns') {
+          updateData.returns = existingEntry.returns + quantity;
+        } else { // adjustment
+          updateData.adjustment = existingEntry.adjustment + quantity;
+        }
 
         const { error } = await supabase
           .from('stock_entries')
@@ -129,48 +118,71 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
           .eq('id', existingEntry.id);
 
         if (error) throw error;
-      } else {
-        // Create new entry
-        const newEntry = {
-          date: today,
-          location_id: formData.location_id,
-          phone_model_id: formData.phone_model_id,
-          imei: formData.imei || null,
-          morning_stock: inputType === 'add_stock' ? quantity : 0,
-          night_stock: 0, // Will be calculated by trigger
-          incoming: inputType === 'incoming' ? quantity : 0,
-          add_stock: inputType === 'add_stock' ? quantity : 0,
-          returns: 0,
-          sold: 0,
-          adjustment: 0,
-          notes: formData.notes || null
-        };
 
-        const { error } = await supabase
+      } else { // 'add_stock' or 'incoming'
+        const { data: existingEntry } = await supabase
           .from('stock_entries')
-          .insert(newEntry);
+          .select('*')
+          .eq('date', today)
+          .eq('location_id', formData.location_id)
+          .eq('phone_model_id', formData.phone_model_id)
+          .eq('imei', formData.imei || null)
+          .maybeSingle();
 
-        if (error) throw error;
+        if (existingEntry) {
+          // Update existing entry
+          const updateData = inputType === 'add_stock'
+            ? {
+                add_stock: existingEntry.add_stock + quantity,
+                morning_stock: existingEntry.morning_stock + quantity,
+                notes: formData.notes || existingEntry.notes
+              }
+            : {
+                incoming: existingEntry.incoming + quantity,
+                notes: formData.notes || existingEntry.notes
+              };
+
+          const { error } = await supabase
+            .from('stock_entries')
+            .update(updateData)
+            .eq('id', existingEntry.id);
+
+          if (error) throw error;
+        } else {
+          // Create new entry
+          const newEntry = {
+            date: today,
+            location_id: formData.location_id,
+            phone_model_id: formData.phone_model_id,
+            imei: formData.imei || null,
+            morning_stock: inputType === 'add_stock' ? quantity : 0,
+            night_stock: 0, // Will be calculated by trigger
+            incoming: inputType === 'incoming' ? quantity : 0,
+            add_stock: inputType === 'add_stock' ? quantity : 0,
+            returns: 0,
+            sold: 0,
+            adjustment: 0,
+            notes: formData.notes || null
+          };
+
+          const { error } = await supabase
+            .from('stock_entries')
+            .insert(newEntry);
+
+          if (error) throw error;
+        }
       }
-
-      // Log transaction
-      await supabase
-        .from('stock_transactions_log')
-        .insert({
-          stock_entry_id: existingEntry?.id || null, // This could be improved with the actual ID
-          transaction_type: inputType,
-          quantity: quantity,
-          previous_night_stock: existingEntry?.night_stock || 0,
-          new_night_stock: existingEntry ? 
-            (inputType === 'add_stock' ? existingEntry.night_stock + quantity : existingEntry.night_stock + quantity) :
-            quantity,
-          notes: formData.notes || null
-        });
     },
     onSuccess: () => {
+      const successMessages = {
+        add_stock: `Added ${formData.quantity} units to stock.`,
+        incoming: `Recorded ${formData.quantity} incoming units.`,
+        returns: `Recorded ${formData.quantity} returned units.`,
+        adjustment: `Recorded an adjustment of ${formData.quantity} units.`,
+      };
       toast({
         title: "Stock updated successfully",
-        description: `${inputType === 'add_stock' ? 'Added stock' : 'Incoming HP recorded'} for ${formData.quantity} units.`,
+        description: successMessages[inputType],
       });
       
       // Reset form
@@ -214,15 +226,14 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
   return (
     <div className="space-y-6">
       {/* Input Type Selection */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant={inputType === 'add_stock' ? 'default' : 'outline'}
           onClick={() => setInputType('add_stock')}
           className="flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" />
-          Add Stock
+          <Plus className="w-4 h-4" /> Add Stock
         </Button>
         <Button
           type="button"
@@ -230,8 +241,23 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
           onClick={() => setInputType('incoming')}
           className="flex items-center gap-2"
         >
-          <Truck className="w-4 h-4" />
-          Incoming HP
+          <Truck className="w-4 h-4" /> Incoming HP
+        </Button>
+        <Button
+          type="button"
+          variant={inputType === 'returns' ? 'default' : 'outline'}
+          onClick={() => setInputType('returns')}
+          className="flex items-center gap-2"
+        >
+          <Save className="w-4 h-4" /> Add Returns
+        </Button>
+        <Button
+          type="button"
+          variant={inputType === 'adjustment' ? 'default' : 'outline'}
+          onClick={() => setInputType('adjustment')}
+          className="flex items-center gap-2"
+        >
+          <Save className="w-4 h-4" /> Add Adjustment
         </Button>
       </div>
 
@@ -354,7 +380,15 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
           >
             <Save className="w-4 h-4" />
             {stockMutation.isPending ? 'Processing...' : 
-              (inputType === 'add_stock' ? 'Add to Stock' : 'Record Incoming')}
+              (
+                {
+                  add_stock: 'Add to Stock',
+                  incoming: 'Record Incoming',
+                  returns: 'Record Returns',
+                  adjustment: 'Record Adjustment'
+                }[inputType]
+              )
+            }
           </Button>
         </div>
       </form>

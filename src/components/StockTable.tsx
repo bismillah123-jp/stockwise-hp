@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -14,37 +15,18 @@ import {
 } from "@/components/ui/table";
 import { Search, Filter, Edit, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { StockEntry } from "@/types";
+import { EditStockDialog } from "./EditStockDialog";
 
 interface StockTableProps {
   selectedLocation: string;
 }
 
-interface StockEntry {
-  id: string;
-  date: string;
-  imei: string | null;
-  morning_stock: number;
-  night_stock: number;
-  incoming: number;
-  add_stock: number;
-  returns: number;
-  sold: number;
-  adjustment: number;
-  notes: string | null;
-  stock_locations: {
-    name: string;
-  };
-  phone_models: {
-    brand: string;
-    model: string;
-    storage_capacity: string | null;
-    color: string | null;
-  };
-}
-
 export function StockTable({ selectedLocation }: StockTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<StockEntry | null>(null);
 
   const { data: stockEntries, isLoading } = useQuery({
     queryKey: ['stock-entries', selectedLocation, searchTerm, brandFilter],
@@ -138,18 +120,19 @@ export function StockTable({ selectedLocation }: StockTableProps) {
               className="pl-10"
             />
           </div>
-          <select 
-            value={brandFilter} 
-            onChange={(e) => setBrandFilter(e.target.value)}
-            className="bg-background border border-border rounded-lg px-3 py-2 text-sm min-w-32"
-          >
-            <option value="all">All Brands</option>
-            {brands?.map(brand => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
-            ))}
-          </select>
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="w-full sm:w-48 text-sm">
+              <SelectValue placeholder="Filter by brand" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Brands</SelectItem>
+              {brands?.map(brand => (
+                <SelectItem key={brand} value={brand}>
+                  {brand}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       
@@ -164,15 +147,16 @@ export function StockTable({ selectedLocation }: StockTableProps) {
           </div>
         ) : (
           <div className="rounded-lg border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
                   <TableHead>Date</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Brand & Model</TableHead>
+                  <TableHead className="min-w-[200px]">Brand & Model</TableHead>
                   <TableHead>IMEI</TableHead>
-                  <TableHead>Morning Stock</TableHead>
-                  <TableHead>Night Stock</TableHead>
+                  <TableHead>Morning</TableHead>
+                  <TableHead>Night</TableHead>
                   <TableHead>Incoming</TableHead>
                   <TableHead>Sold</TableHead>
                   <TableHead>Status</TableHead>
@@ -205,25 +189,29 @@ export function StockTable({ selectedLocation }: StockTableProps) {
                       <TableCell className="font-mono text-xs">
                         {entry.imei || "—"}
                       </TableCell>
-                      <TableCell className="text-center font-medium">
-                        {entry.morning_stock}
-                      </TableCell>
-                      <TableCell className="text-center font-bold">
-                        {entry.night_stock}
-                      </TableCell>
-                      <TableCell className="text-center text-info">
+                      <TableCell className="text-center font-medium">{entry.morning_stock}</TableCell>
+                      <TableCell className="text-center font-bold">{entry.night_stock}</TableCell>
+                      <TableCell className="text-center text-blue-500">
                         {entry.incoming > 0 ? `+${entry.incoming}` : "—"}
                       </TableCell>
-                      <TableCell className="text-center text-destructive">
+                      <TableCell className="text-center text-green-500">
                         {entry.sold > 0 ? `-${entry.sold}` : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={status.variant} className="text-xs">
+                        <Badge variant={status.variant} className="text-xs font-medium">
                           {status.label}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            setSelectedEntry(entry);
+                            setIsEditDialogOpen(true);
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -232,6 +220,7 @@ export function StockTable({ selectedLocation }: StockTableProps) {
                 })}
               </TableBody>
             </Table>
+            </div>
             
             {stockEntries?.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
@@ -241,6 +230,11 @@ export function StockTable({ selectedLocation }: StockTableProps) {
           </div>
         )}
       </CardContent>
+      <EditStockDialog
+        entry={selectedEntry}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
     </Card>
   );
 }
