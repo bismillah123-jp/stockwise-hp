@@ -128,6 +128,9 @@ export function StockDashboard() {
                   Live Data
                 </Badge>
                 <ThemeToggle />
+                <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
+                  Logout
+                </Button>
               </div>
             </div>
           </div>
