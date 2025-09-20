@@ -97,7 +97,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
       const quantity = parseInt(formData.quantity);
 
       if (!quantity || quantity <= 0) {
-        throw new Error('Please enter a valid quantity');
+        throw new Error('Masukkan jumlah yang valid');
       }
 
       // Check if entry exists for today
@@ -202,8 +202,8 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
     e.preventDefault();
     if (!formData.location_id || !formData.phone_model_id || !formData.quantity) {
       toast({
-        title: "Missing fields",
-        description: "Please fill in all required fields.",
+        title: "Field belum lengkap",
+        description: "Mohon isi semua field yang wajib diisi.",
         variant: "destructive",
       });
       return;
@@ -222,7 +222,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
           className="flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Stock
+          Tambah Stok
         </Button>
         <Button
           type="button"
@@ -231,7 +231,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
           className="flex items-center gap-2"
         >
           <Truck className="w-4 h-4" />
-          Incoming HP
+          HP Datang
         </Button>
       </div>
 
@@ -245,13 +245,13 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Location */}
           <div className="space-y-2">
-            <Label htmlFor="location">Location *</Label>
+            <Label htmlFor="location">Lokasi *</Label>
             <Select 
               value={formData.location_id} 
               onValueChange={(value) => setFormData({...formData, location_id: value})}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select location" />
+                <SelectValue placeholder="Pilih lokasi" />
               </SelectTrigger>
               <SelectContent>
                 {locations?.map(location => (
@@ -265,7 +265,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
 
           {/* Brand Selection */}
           <div className="space-y-2">
-            <Label htmlFor="brand">Brand *</Label>
+            <Label htmlFor="brand">Merk *</Label>
             <Select 
               value={selectedBrand} 
               onValueChange={(value) => {
@@ -274,7 +274,7 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select brand" />
+                <SelectValue placeholder="Pilih merk" />
               </SelectTrigger>
               <SelectContent>
                 {brands?.map(brand => (
@@ -288,14 +288,14 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
 
           {/* Phone Model */}
           <div className="space-y-2">
-            <Label htmlFor="phone_model">Phone Model *</Label>
+            <Label htmlFor="phone_model">Model HP *</Label>
             <Select 
               value={formData.phone_model_id} 
               onValueChange={(value) => setFormData({...formData, phone_model_id: value})}
               disabled={!selectedBrand}
             >
               <SelectTrigger>
-                <SelectValue placeholder={!selectedBrand ? "Select brand first" : "Select model"} />
+                <SelectValue placeholder={!selectedBrand ? "Pilih merk dulu" : "Pilih model"} />
               </SelectTrigger>
               <SelectContent>
                 {phoneModels?.map(model => (
@@ -314,20 +314,20 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
               id="imei"
               value={formData.imei}
               onChange={(e) => setFormData({...formData, imei: e.target.value})}
-              placeholder="Optional IMEI"
+              placeholder="IMEI (opsional)"
             />
           </div>
 
           {/* Quantity */}
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity *</Label>
+            <Label htmlFor="quantity">Jumlah *</Label>
             <Input
               id="quantity"
               type="number"
               min="1"
               value={formData.quantity}
               onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-              placeholder="Enter quantity"
+              placeholder="Masukkan jumlah"
               required
             />
           </div>
@@ -335,12 +335,12 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
 
         {/* Notes */}
         <div className="space-y-2 col-span-full">
-          <Label htmlFor="notes">Notes</Label>
+          <Label htmlFor="notes">Catatan</Label>
           <Textarea
             id="notes"
             value={formData.notes}
             onChange={(e) => setFormData({...formData, notes: e.target.value})}
-            placeholder="Optional notes..."
+            placeholder="Catatan opsional..."
             rows={2}
           />
         </div>
@@ -353,8 +353,8 @@ export function ManualStockInput({ onSuccess }: ManualStockInputProps) {
             className="w-full sm:w-auto flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {stockMutation.isPending ? 'Processing...' : 
-              (inputType === 'add_stock' ? 'Add to Stock' : 'Record Incoming')}
+            {stockMutation.isPending ? 'Memproses...' : 
+              (inputType === 'add_stock' ? 'Tambah ke Stok' : 'Catat HP Datang')}
           </Button>
         </div>
       </form>

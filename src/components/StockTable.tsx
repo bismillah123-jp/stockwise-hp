@@ -114,9 +114,9 @@ export function StockTable({ selectedLocation }: StockTableProps) {
   });
 
   const getStockStatus = (nightStock: number) => {
-    if (nightStock === 0) return { label: "Out of Stock", variant: "destructive" as const };
-    if (nightStock <= 5) return { label: "Low Stock", variant: "warning" as const };
-    return { label: "In Stock", variant: "success" as const };
+    if (nightStock === 0) return { label: "Habis", variant: "destructive" as const };
+    if (nightStock <= 5) return { label: "Sedikit", variant: "warning" as const };
+    return { label: "Tersedia", variant: "success" as const };
   };
 
   return (
@@ -124,7 +124,7 @@ export function StockTable({ selectedLocation }: StockTableProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Eye className="w-5 h-5" />
-          Stock Inventory
+          Inventori Stok
         </CardTitle>
         
         {/* Filters */}
@@ -132,7 +132,7 @@ export function StockTable({ selectedLocation }: StockTableProps) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by brand, model, IMEI, or color..."
+              placeholder="Cari berdasarkan merk, model, IMEI, atau warna..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -143,7 +143,7 @@ export function StockTable({ selectedLocation }: StockTableProps) {
             onChange={(e) => setBrandFilter(e.target.value)}
             className="bg-background border border-border rounded-lg px-3 py-2 text-sm min-w-32"
           >
-            <option value="all">All Brands</option>
+            <option value="all">Semua Merk</option>
             {brands?.map(brand => (
               <option key={brand} value={brand}>
                 {brand}
@@ -167,16 +167,16 @@ export function StockTable({ selectedLocation }: StockTableProps) {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  <TableHead>Date</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Brand & Model</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Lokasi</TableHead>
+                  <TableHead>Merk & Model</TableHead>
                   <TableHead>IMEI</TableHead>
-                  <TableHead>Morning Stock</TableHead>
-                  <TableHead>Night Stock</TableHead>
-                  <TableHead>Incoming</TableHead>
-                  <TableHead>Sold</TableHead>
+                  <TableHead>Stok Pagi</TableHead>
+                  <TableHead>Stok Malam</TableHead>
+                  <TableHead>Masuk</TableHead>
+                  <TableHead>Terjual</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,7 +235,7 @@ export function StockTable({ selectedLocation }: StockTableProps) {
             
             {stockEntries?.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                No stock entries found.
+                Tidak ada data stok ditemukan.
               </div>
             )}
           </div>

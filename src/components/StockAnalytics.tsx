@@ -166,7 +166,7 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              30-Day Sales & Stock Trend
+              Tren Penjualan & Stok 30 Hari
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -192,21 +192,21 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
                     dataKey="sales" 
                     stroke="hsl(var(--destructive))" 
                     strokeWidth={3}
-                    name="Sales"
+                    name="Penjualan"
                   />
                   <Line 
                     type="monotone" 
                     dataKey="incoming" 
                     stroke="hsl(var(--info))" 
                     strokeWidth={3}
-                    name="Incoming"
+                    name="HP Datang"
                   />
                   <Line 
                     type="monotone" 
                     dataKey="stock" 
                     stroke="hsl(var(--primary))" 
                     strokeWidth={3}
-                    name="Avg Stock"
+                    name="Rata-rata Stok"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -219,7 +219,7 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
-              Brand Performance
+              Performa Merk
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -240,8 +240,8 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
                       borderRadius: '8px'
                     }} 
                   />
-                  <Bar dataKey="sales" fill="hsl(var(--primary))" name="Sales" />
-                  <Bar dataKey="stock" fill="hsl(var(--accent))" name="Current Stock" />
+                  <Bar dataKey="sales" fill="hsl(var(--primary))" name="Penjualan" />
+                  <Bar dataKey="stock" fill="hsl(var(--accent))" name="Stok Saat Ini" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -253,14 +253,14 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-warning" />
-              Low Stock Alerts
+              Peringatan Stok Menipis
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {lowStockItems?.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">
-                  No low stock items found
+                  Tidak ada stok yang menipis
                 </p>
               ) : (
                 lowStockItems?.map((item, index) => (
@@ -274,7 +274,7 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
                       </div>
                     </div>
                     <div className="text-warning font-bold">
-                      {item.night_stock} left
+                      {item.night_stock} tersisa
                     </div>
                   </div>
                 ))
@@ -289,7 +289,7 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Brand Market Share (by Sales)
+            Pangsa Pasar Merk (berdasarkan Penjualan)
           </CardTitle>
         </CardHeader>
         <CardContent>

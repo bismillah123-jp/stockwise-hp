@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3 } from "lucide-react";
+import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
 import { ManualStockInput } from "./ManualStockInput";
 import { StockAnalytics } from "./StockAnalytics";
 import { ThemeToggle } from "./ThemeToggle";
+import { MobileNavigation } from "./MobileNavigation";
 
 interface DashboardStats {
   todaySales: number;
@@ -98,22 +99,22 @@ export function StockDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col pb-20 md:pb-0">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 lg:px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="mr-6">
-              <h1 className="text-xl font-bold">Stock Management</h1>
-              <p className="text-sm text-muted-foreground">Real-time inventory tracking</p>
+              <h1 className="text-xl font-bold">Manajemen Stok</h1>
+              <p className="text-sm text-muted-foreground">Pelacakan inventori real-time</p>
             </div>
             <div className="flex items-center gap-4">
               <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                 <SelectTrigger className="w-full sm:w-[180px] text-sm">
-                  <SelectValue placeholder="All Locations" />
+                  <SelectValue placeholder="Semua Lokasi" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
+                  <SelectItem value="all">Semua Lokasi</SelectItem>
                   {locations?.map(location => (
                     <SelectItem key={location.id} value={location.name}>
                       {location.name}
@@ -123,45 +124,46 @@ export function StockDashboard() {
               </Select>
               <ThemeToggle />
               <Button variant="outline" size="sm" onClick={() => supabase.auth.signOut()}>
-                Logout
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Keluar</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
+      {/* Desktop Navigation Tabs - Hidden on mobile */}
+      <div className="hidden md:block border-b border-border">
+        <div className="container mx-auto px-4 lg:px-6">
+          <nav className="flex gap-1 -mb-px">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+              { id: 'table', label: 'Data Stok', icon: Package },
+              { id: 'analytics', label: 'Statistik', icon: TrendingUp }
+            ].map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <Button
+                  key={tab.id}
+                  variant="ghost"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`h-12 rounded-none border-b-2 ${
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mr-2" />
+                  {tab.label}
+                </Button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="flex-1">
-        {/* Navigation Tabs */}
-        <div className="border-b border-border">
-          <div className="container mx-auto px-4 lg:px-6">
-            <nav className="flex gap-1 -mb-px">
-              {[
-                { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-                { id: 'table', label: 'Stock Table', icon: Package },
-                { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-              ].map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <Button
-                    key={tab.id}
-                    variant="ghost"
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`h-12 rounded-none border-b-2 ${
-                      activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    {tab.label}
-                  </Button>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
-
         <div className="container mx-auto px-4 lg:px-6 py-6">
           {/* Dashboard View */}
           {activeTab === 'dashboard' && (
@@ -170,28 +172,28 @@ export function StockDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   {
-                    title: "Today's Sales",
+                    title: "Penjualan Hari Ini",
                     value: stats?.todaySales || 0,
                     icon: TrendingUp,
                     color: "text-green-500",
                     loading: statsLoading
                   },
                   {
-                    title: "Night Stock",
+                    title: "Stok Malam",
                     value: stats?.totalNightStock || 0,
                     icon: Package,
                     color: "text-blue-500",
                     loading: statsLoading
                   },
                   {
-                    title: "Incoming HP",
+                    title: "HP Datang",
                     value: stats?.incomingHP || 0,
                     icon: Truck,
                     color: "text-purple-500",
                     loading: statsLoading
                   },
                   {
-                    title: "Discrepancies",
+                    title: "Perbedaan",
                     value: stats?.discrepancies || 0,
                     icon: AlertTriangle,
                     color: "text-yellow-500",
@@ -226,14 +228,14 @@ export function StockDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Plus className="w-5 h-5" />
-                    Manual Stock Input
+                    Input Stok Manual
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ManualStockInput onSuccess={() => {
                     toast({
-                      title: "Stock updated successfully",
-                      description: "The stock entry has been processed.",
+                      title: "Stok berhasil diperbarui",
+                      description: "Data stok telah diproses.",
                     });
                   }} />
                 </CardContent>
@@ -252,6 +254,9 @@ export function StockDashboard() {
           )}
         </div>
       </main>
+
+      {/* Mobile Navigation */}
+      <MobileNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
