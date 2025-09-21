@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowLeftRight, Sun, Tag, Moon, Package } from "lucide-react";
+import { Plus, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowLeftRight, Sun, Tag, Moon, Package, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
