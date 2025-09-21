@@ -1,10 +1,20 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Table, 
   TableBody, 
@@ -13,15 +23,18 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, Filter, Edit, Eye } from "lucide-react";
+import { Search, Filter, Edit, Eye, ArrowRightLeft, Trash2, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { EditStockDialog } from "./EditStockDialog";
+import { TransferStockDialog } from "./TransferStockDialog";
 
 interface StockTableProps {
   selectedLocation: string;
   selectedDate: Date;
 }
 
-interface StockEntry {
+export interface StockEntry {
   id: string;
   date: string;
   imei: string | null;
@@ -34,9 +47,11 @@ interface StockEntry {
   adjustment: number;
   notes: string | null;
   stock_locations: {
+    id: string;
     name: string;
   };
   phone_models: {
+    id: string;
     brand: string;
     model: string;
     storage_capacity: string | null;
@@ -47,6 +62,13 @@ interface StockEntry {
 export function StockTable({ selectedLocation, selectedDate }: StockTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMarkAsSoldDialogOpen, setIsMarkAsSoldDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<StockEntry | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: stockEntries, isLoading } = useQuery({
     queryKey: ['stock-entries', selectedLocation, searchTerm, brandFilter, selectedDate],
@@ -57,8 +79,8 @@ export function StockTable({ selectedLocation, selectedDate }: StockTableProps) 
         .from('stock_entries')
         .select(`
           *,
-          stock_locations(name),
-          phone_models(brand, model, storage_capacity, color)
+          stock_locations(id, name),
+          phone_models(id, brand, model, storage_capacity, color)
         `)
         .eq('date', date)
         .order('created_at', { ascending: false });
@@ -117,134 +139,233 @@ export function StockTable({ selectedLocation, selectedDate }: StockTableProps) 
     }
   });
 
-  const getStockStatus = (nightStock: number) => {
-    if (nightStock === 0) return { label: "Habis", variant: "destructive" as const };
-    if (nightStock <= 5) return { label: "Sedikit", variant: "warning" as const };
+  const getStockStatus = (entry: StockEntry) => {
+    if (entry.sold > 0) return { label: "Terjual", variant: "destructive" as const };
     return { label: "Tersedia", variant: "success" as const };
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('stock_entries').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Sukses", description: "Entri stok telah berhasil dihapus." });
+      queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: `Gagal menghapus entri: ${error.message}`, variant: "destructive" });
+    },
+    onSettled: () => {
+      setIsDeleteDialogOpen(false);
+      setSelectedEntry(null);
+    }
+  });
+
+  const markAsSoldMutation = useMutation({
+    mutationFn: async (entry: StockEntry) => {
+      const { error } = await supabase
+        .from('stock_entries')
+        .update({ sold: entry.sold + 1, night_stock: entry.night_stock - 1 })
+        .eq('id', entry.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Sukses", description: "Stok telah ditandai sebagai terjual." });
+      queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: `Gagal menandai sebagai terjual: ${error.message}`, variant: "destructive" });
+    },
+    onSettled: () => {
+      setIsMarkAsSoldDialogOpen(false);
+      setSelectedEntry(null);
+    }
+  });
+
+  const handleDeleteClick = (entry: StockEntry) => {
+    setSelectedEntry(entry);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleMarkAsSoldClick = (entry: StockEntry) => {
+    setSelectedEntry(entry);
+    setIsMarkAsSoldDialogOpen(true);
+  };
+
+  const handleEditClick = (entry: StockEntry) => {
+    setSelectedEntry(entry);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleTransferClick = (entry: StockEntry) => {
+    setSelectedEntry(entry);
+    setIsTransferDialogOpen(true);
+  };
+
   return (
-    <Card className="border-border/50 bg-card/50 backdrop-blur">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Eye className="w-5 h-5" />
-          Inventori Stok
-        </CardTitle>
-        
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cari berdasarkan merk, model, IMEI, atau warna..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+    <>
+      <Card className="border-border/50 bg-card/50 backdrop-blur">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            Inventori Stok
+          </CardTitle>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari berdasarkan merk, model, IMEI, atau warna..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <select
+              value={brandFilter}
+              onChange={(e) => setBrandFilter(e.target.value)}
+              className="bg-background border border-border rounded-lg px-3 py-2 text-sm min-w-32"
+            >
+              <option value="all">Semua Merk</option>
+              {brands?.map(brand => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
           </div>
-          <select 
-            value={brandFilter} 
-            onChange={(e) => setBrandFilter(e.target.value)}
-            className="bg-background border border-border rounded-lg px-3 py-2 text-sm min-w-32"
-          >
-            <option value="all">Semua Merk</option>
-            {brands?.map(brand => (
-              <option key={brand} value={brand}>
-                {brand}
-              </option>
-            ))}
-          </select>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-12 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Lokasi</TableHead>
-                  <TableHead>Merk & Model</TableHead>
-                  <TableHead>IMEI</TableHead>
-                  <TableHead>Stok Pagi</TableHead>
-                  <TableHead>Stok Malam</TableHead>
-                  <TableHead>Masuk</TableHead>
-                  <TableHead>Terjual</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {stockEntries?.map((entry) => {
-                  const status = getStockStatus(entry.night_stock);
-                  return (
-                    <TableRow key={entry.id} className="hover:bg-muted/20 transition-colors">
-                      <TableCell className="font-medium">
-                        {new Date(entry.date).toLocaleDateString('id-ID')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {entry.stock_locations?.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium text-sm">
-                            {entry.phone_models?.brand} {entry.phone_models?.model}
+        </CardHeader>
+
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-12 bg-muted rounded" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-border/50 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Lokasi</TableHead>
+                    <TableHead>Merk & Model</TableHead>
+                    <TableHead>IMEI</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stockEntries?.map((entry) => {
+                    const status = getStockStatus(entry);
+                    return (
+                      <TableRow key={entry.id} className="hover:bg-muted/20 transition-colors">
+                        <TableCell className="font-medium">
+                          {new Date(entry.date).toLocaleDateString('id-ID')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {entry.stock_locations?.name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium text-sm">
+                              {entry.phone_models?.brand} {entry.phone_models?.model}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {entry.phone_models?.storage_capacity} • {entry.phone_models?.color}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {entry.phone_models?.storage_capacity} • {entry.phone_models?.color}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {entry.imei || "—"}
-                      </TableCell>
-                      <TableCell className="text-center font-medium">
-                        {entry.morning_stock}
-                      </TableCell>
-                      <TableCell className="text-center font-bold">
-                        {entry.night_stock}
-                      </TableCell>
-                      <TableCell className="text-center text-info">
-                        {entry.incoming > 0 ? `+${entry.incoming}` : "—"}
-                      </TableCell>
-                      <TableCell className="text-center text-destructive">
-                        {entry.sold > 0 ? `-${entry.sold}` : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={status.variant} className="text-xs">
-                          {status.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            
-            {stockEntries?.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                Tidak ada data stok ditemukan.
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {entry.imei || "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={status.variant} className="text-xs">
+                            {status.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMarkAsSoldClick(entry)} disabled={entry.night_stock === 0}>
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTransferClick(entry)} disabled={entry.night_stock === 0}>
+                            <ArrowRightLeft className="h-4 w-4 text-blue-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(entry)}>
+                            <Edit className="h-4 w-4 text-yellow-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteClick(entry)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+
+              {stockEntries?.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Tidak ada data stok ditemukan.
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Anda yakin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak bisa dibatalkan. Ini akan menghapus entri stok secara permanen dari server.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={() => selectedEntry && deleteMutation.mutate(selectedEntry.id)}>
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isMarkAsSoldDialogOpen} onOpenChange={setIsMarkAsSoldDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tandai sebagai Terjual?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Aksi ini akan menambah jumlah terjual dan mengurangi stok malam sebanyak 1.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={() => selectedEntry && markAsSoldMutation.mutate(selectedEntry)}>
+              Ya, Tandai
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <EditStockDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        stockEntry={selectedEntry}
+      />
+
+      <TransferStockDialog
+        open={isTransferDialogOpen}
+        onOpenChange={setIsTransferDialogOpen}
+        stockEntry={selectedEntry}
+      />
+    </>
   );
 }
