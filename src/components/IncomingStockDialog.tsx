@@ -8,6 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface IncomingStockDialogProps {
   open: boolean;
@@ -15,6 +21,7 @@ interface IncomingStockDialogProps {
 }
 
 export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogProps) {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
@@ -72,18 +79,18 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
         throw new Error('Semua field wajib diisi');
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = parseInt(quantity);
 
       // Find the phone model
       const phoneModel = phoneModels?.find(m => m.id === selectedModel);
       if (!phoneModel) throw new Error('Model HP tidak ditemukan');
 
-      // Check if stock entry exists for today
+      // Check if stock entry exists for the selected date
       const { data: existingEntry, error: fetchError } = await supabase
         .from('stock_entries')
         .select('*')
-        .eq('date', today)
+        .eq('date', date)
         .eq('location_id', selectedLocation)
         .eq('phone_model_id', selectedModel)
         .maybeSingle();
@@ -93,14 +100,11 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       if (existingEntry) {
         // Update existing entry - add to incoming field
         const newIncoming = existingEntry.incoming + quantityNum;
-        const newNightStock = existingEntry.morning_stock + newIncoming + existingEntry.add_stock + 
-                             existingEntry.returns + existingEntry.adjustment - existingEntry.sold;
 
         const { error: updateError } = await supabase
           .from('stock_entries')
           .update({
             incoming: newIncoming,
-            night_stock: newNightStock,
             imei: imei || existingEntry.imei,
             notes: notes || existingEntry.notes
           })
@@ -113,29 +117,37 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
           .from('stock_transactions_log')
           .insert({
             stock_entry_id: existingEntry.id,
-            transaction_type: 'incoming_hp',
+            transaction_type: 'incoming',
             quantity: quantityNum,
-            previous_night_stock: existingEntry.night_stock,
-            new_night_stock: newNightStock,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
-            notes: `HP datang: ${notes || 'Tanpa catatan'}`
-          });
-      } else {
-        // Create new entry for today with incoming stock
-        const { error: insertError } = await supabase
-          .from('stock_entries')
-          .insert({
-            date: today,
-            location_id: selectedLocation,
-            phone_model_id: selectedModel,
-            morning_stock: 0,
-            incoming: quantityNum,
-            night_stock: quantityNum, // Will be calculated by trigger
-            imei: imei || null,
-            notes: notes || null
+            notes: `HP Datang: ${notes || 'Tanpa catatan'}`
           });
 
+      } else {
+        // Create new entry for the selected date with incoming stock
+        const { data: newEntry, error: insertError } = await supabase
+          .from('stock_entries')
+          .insert({
+            date: date,
+            location_id: selectedLocation,
+            phone_model_id: selectedModel,
+            incoming: quantityNum,
+            imei: imei || null,
+            notes: notes || null
+          }).select().single();
+
         if (insertError) throw insertError;
+
+        // Log the transaction
+        if (newEntry) {
+            await supabase
+                .from('stock_transactions_log')
+                .insert({
+                    stock_entry_id: newEntry.id,
+                    transaction_type: 'incoming',
+                    quantity: quantityNum,
+                    notes: `HP Datang: ${notes || 'Tanpa catatan'}`
+                });
+        }
       }
     },
     onSuccess: () => {
@@ -147,6 +159,7 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       onOpenChange(false);
       // Reset form
+      setSelectedDate(new Date());
       setSelectedLocation("");
       setSelectedBrand("");
       setSelectedModel("");
@@ -169,11 +182,37 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
         <DialogHeader>
           <DialogTitle>HP Datang</DialogTitle>
           <DialogDescription>
-            Catat HP yang datang di siang hari
+            Catat HP yang datang untuk tanggal yang dipilih.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tanggal</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="space-y-2">
             <Label>Lokasi</Label>
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>

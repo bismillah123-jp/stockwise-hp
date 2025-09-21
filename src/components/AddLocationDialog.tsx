@@ -1,108 +1,70 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-export function AddLocationDialog() {
-  const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', description: '' });
+interface AddLocationDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
+
+export function AddLocationDialog({ open, onOpenChange }: AddLocationDialogProps) {
+  const [name, setName] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const addLocationMutation = useMutation({
+  const mutation = useMutation({
     mutationFn: async () => {
-      if (!formData.name.trim()) {
-        throw new Error('Location name is required');
-      }
-
-      const { error } = await supabase
-        .from('stock_locations')
-        .insert({
-          name: formData.name.trim(),
-          description: formData.description.trim() || null
-        });
-
+      const { error } = await supabase.from('stock_locations').insert({ name });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({
-        title: "Location added successfully",
-        description: `${formData.name} has been added to the locations list.`,
-      });
-      
-      setFormData({ name: '', description: '' });
-      setOpen(false);
+      toast({ title: 'Lokasi berhasil ditambahkan' });
       queryClient.invalidateQueries({ queryKey: ['locations'] });
+      onOpenChange(false);
+      setName('');
     },
     onError: (error: any) => {
-      toast({
-        title: "Error adding location",
-        description: error.message || "An error occurred while adding the location.",
-        variant: "destructive",
-      });
-    }
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addLocationMutation.mutate();
+    mutation.mutate();
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Plus className="w-3 h-3" />
-          Add Location
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Location</DialogTitle>
+          <DialogTitle>Tambah Lokasi Baru</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="location-name">Location Name *</Label>
+            <Label htmlFor="name">Nama Lokasi</Label>
             <Input
-              id="location-name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter location name"
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="location-description">Description</Label>
-            <Textarea
-              id="location-description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Optional description"
-              rows={2}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              type="submit" 
-              disabled={addLocationMutation.isPending}
-              className="flex-1"
-            >
-              {addLocationMutation.isPending ? 'Adding...' : 'Add Location'}
+          <DialogFooter>
+            <Button type="submit" disabled={mutation.isPending}>
+              Simpan
             </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
