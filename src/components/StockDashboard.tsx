@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen } from "lucide-react";
+import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowRightLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
@@ -191,85 +191,127 @@ export function StockDashboard() {
           {/* Dashboard View */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              {/* New KPI Cards */}
+              {/* Modern KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Total Stok Pagi */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Total Stok Pagi</CardTitle>
+                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-50" />
+                  <CardHeader className="relative pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
+                      <Package className="w-4 h-4 text-primary" />
+                      Total Stok Pagi
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-bold">{stats?.totalMorningStock ?? 0}</p>
-                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                      <span>Mbutoh: {stats?.breakdown['MBUTOH']?.morning_stock ?? 0}</span>
-                      <span>Soko: {stats?.breakdown['SOKO']?.morning_stock ?? 0}</span>
+                  <CardContent className="relative">
+                    <p className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent mb-3">
+                      {stats?.totalMorningStock ?? 0}
+                    </p>
+                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+                      <span className="font-medium">Mbutoh: {stats?.breakdown['MBUTOH']?.morning_stock ?? 0}</span>
+                      <span className="font-medium">Soko: {stats?.breakdown['SOKO']?.morning_stock ?? 0}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* HP Datang */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Unit Baru Masuk</CardTitle>
+                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-success/5 via-transparent to-success/10 opacity-50" />
+                  <CardHeader className="relative pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-success" />
+                      Unit Baru Masuk
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-bold">{stats?.totalIncoming ?? 0}</p>
+                  <CardContent className="relative">
+                    <p className="text-3xl font-bold text-success mb-3">
+                      {stats?.totalIncoming ?? 0}
+                    </p>
+                    <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+                      Unit yang masuk hari ini
+                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Total Laku */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Total Laku</CardTitle>
-                    <CardDescription>Total semua lokasi</CardDescription>
+                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-warning/5 via-transparent to-warning/10 opacity-50" />
+                  <CardHeader className="relative pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-warning" />
+                      Total Terjual
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Semua lokasi</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-bold">{stats?.totalSold ?? 0}</p>
-                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                      <span>Mbutoh: {stats?.breakdown['MBUTOH']?.sold ?? 0}</span>
-                      <span>Soko: {stats?.breakdown['SOKO']?.sold ?? 0}</span>
+                  <CardContent className="relative">
+                    <p className="text-3xl font-bold text-warning mb-3">
+                      {stats?.totalSold ?? 0}
+                    </p>
+                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+                      <span className="font-medium">Mbutoh: {stats?.breakdown['MBUTOH']?.sold ?? 0}</span>
+                      <span className="font-medium">Soko: {stats?.breakdown['SOKO']?.sold ?? 0}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Transfer */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Transfer</CardTitle>
-                    <CardDescription>Total semua lokasi</CardDescription>
+                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-info/5 via-transparent to-info/10 opacity-50" />
+                  <CardHeader className="relative pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
+                      <ArrowRightLeft className="w-4 h-4 text-info" />
+                      Transfer
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Antar lokasi</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-bold">{stats?.totalTransfers ?? 0}</p>
-                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                      <span>Ke Soko: {stats?.transferBreakdown.toSoko ?? 0}</span>
-                      <span>Ke Mbutoh: {stats?.transferBreakdown.toMbutoh ?? 0}</span>
+                  <CardContent className="relative">
+                    <p className="text-3xl font-bold text-info mb-3">
+                      {stats?.totalTransfers ?? 0}
+                    </p>
+                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+                      <span className="font-medium">Ke Soko: {stats?.transferBreakdown.toSoko ?? 0}</span>
+                      <span className="font-medium">Ke Mbutoh: {stats?.transferBreakdown.toMbutoh ?? 0}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Stok Malam */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Stok Malam</CardTitle>
-                    <CardDescription>Total stok malam semua lokasi</CardDescription>
+                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 opacity-50" />
+                  <CardHeader className="relative pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
+                      <PackageOpen className="w-4 h-4 text-primary" />
+                      Stok Malam
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Stok akhir hari</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-bold">{stats?.totalNightStock ?? 0}</p>
-                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                      <span>Mbutoh: {stats?.breakdown['MBUTOH']?.night_stock ?? 0}</span>
-                      <span>Soko: {stats?.breakdown['SOKO']?.night_stock ?? 0}</span>
+                  <CardContent className="relative">
+                    <p className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent mb-3">
+                      {stats?.totalNightStock ?? 0}
+                    </p>
+                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+                      <span className="font-medium">Mbutoh: {stats?.breakdown['MBUTOH']?.night_stock ?? 0}</span>
+                      <span className="font-medium">Soko: {stats?.breakdown['SOKO']?.night_stock ?? 0}</span>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Total Stok Akhir */}
-                <Card className="md:col-span-2 lg:col-span-1">
-                  <CardHeader>
-                    <CardTitle>Total Stok Akhir</CardTitle>
-                    <CardDescription>Total semua lokasi</CardDescription>
+                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 md:col-span-2 lg:col-span-1">
+                  <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10 opacity-50" />
+                  <CardHeader className="relative pb-2">
+                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-accent" />
+                      Total Stok Akhir
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">Semua lokasi gabungan</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-bold">{stats?.totalFinalStock ?? 0}</p>
+                  <CardContent className="relative">
+                    <p className="text-3xl font-bold text-accent-foreground mb-3">
+                      {stats?.totalFinalStock ?? 0}
+                    </p>
+                    <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+                      Stok tersedia saat ini
+                    </div>
                   </CardContent>
                 </Card>
               </div>

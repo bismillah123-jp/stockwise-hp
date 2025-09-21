@@ -418,6 +418,10 @@ export type Database = {
         }
         Returns: number
       }
+      delete_stock_entry_and_logs: {
+        Args: { entry_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
