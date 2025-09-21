@@ -4,8 +4,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -22,6 +21,7 @@ interface LocationBreakdown {
   [location: string]: {
     morning_stock: number;
     night_stock: number;
+    sold: number;
   };
 }
 
@@ -75,10 +75,11 @@ export function StockDashboard() {
       const locationBreakdown = (data || []).reduce((acc, entry) => {
         const loc = entry.stock_locations?.name || 'Unknown';
         if (!acc[loc]) {
-          acc[loc] = { morning_stock: 0, night_stock: 0 };
+          acc[loc] = { morning_stock: 0, night_stock: 0, sold: 0 };
         }
         acc[loc].morning_stock += entry.morning_stock;
         acc[loc].night_stock += entry.night_stock;
+        acc[loc].sold += entry.sold;
         return acc;
       }, {} as LocationBreakdown);
 
@@ -176,7 +177,7 @@ export function StockDashboard() {
                 <Button
                   key={tab.id}
                   variant="ghost"
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as 'dashboard' | 'table' | 'analytics')}
                   className={`h-12 rounded-none border-b-2 ${
                     activeTab === tab.id
                       ? 'border-primary text-primary'
@@ -225,12 +226,6 @@ export function StockDashboard() {
                     icon: Truck,
                     color: "text-purple-500",
                   },
-                  {
-                    title: "Selisih",
-                    value: stats?.discrepancies || 0,
-                    icon: AlertTriangle,
-                    color: "text-yellow-500",
-                  }
                 ].map((kpi, index) => {
                   const Icon = kpi.icon;
                   return (
@@ -261,18 +256,32 @@ export function StockDashboard() {
                   <CardHeader>
                     <CardTitle className="text-base">Rincian Stok Per Lokasi</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground space-y-2">
-                    {Object.entries(stats.locationBreakdown).map(([loc, stocks]) => (
-                      <div key={loc} className="flex justify-between items-center">
-                        <span className="font-medium text-foreground">{loc}</span>
-                        <div className="flex items-center gap-4">
-                          <span>Stok Pagi: <strong className="text-sky-500">{stocks.morning_stock}</strong></span>
-                          <span>Stok Malam: <strong className="text-blue-500">{stocks.night_stock}</strong></span>
-                        </div>
-                      </div>
-                    ))}
-                    {Object.keys(stats.locationBreakdown).length === 0 && (
-                      <p>Tidak ada data stok untuk tanggal yang dipilih.</p>
+                  <CardContent>
+                    {Object.keys(stats.locationBreakdown).length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Lokasi</TableHead>
+                            <TableHead className="text-center">Stok Pagi</TableHead>
+                            <TableHead className="text-center">Stok Malam</TableHead>
+                            <TableHead className="text-center">Laku</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(stats.locationBreakdown).map(([loc, stocks]) => (
+                            <TableRow key={loc}>
+                              <TableCell className="font-medium">{loc}</TableCell>
+                              <TableCell className="text-center text-sky-500 font-semibold">{stocks.morning_stock}</TableCell>
+                              <TableCell className="text-center text-blue-500 font-semibold">{stocks.night_stock}</TableCell>
+                              <TableCell className="text-center text-green-500 font-semibold">{stocks.sold}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Tidak ada data stok untuk tanggal yang dipilih.
+                      </p>
                     )}
                   </CardContent>
                 </Card>
