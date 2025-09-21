@@ -145,22 +145,12 @@ export function StockTable({ selectedLocation, selectedDate }: StockTableProps) 
   };
 
   const deleteMutation = useMutation({
-    mutationFn: async (id:string) => {
-      // First, delete associated logs
-      const { error: logError } = await supabase
-        .from('stock_transactions_log')
-        .delete()
-        .eq('stock_entry_id', id);
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('delete_stock_entry_and_logs', {
+        entry_id: id,
+      });
 
-      if (logError) throw new Error(`Failed to delete logs: ${logError.message}`);
-
-      // Then, delete the main entry
-      const { error: entryError } = await supabase
-        .from('stock_entries')
-        .delete()
-        .eq('id', id);
-
-      if (entryError) throw new Error(`Failed to delete entry: ${entryError.message}`);
+      if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: "Sukses", description: "Entri stok telah berhasil dihapus." });
