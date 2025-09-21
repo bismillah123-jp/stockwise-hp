@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface StockTableProps {
   selectedLocation: string;
+  selectedDate: Date;
 }
 
 interface StockEntry {
@@ -42,13 +44,15 @@ interface StockEntry {
   };
 }
 
-export function StockTable({ selectedLocation }: StockTableProps) {
+export function StockTable({ selectedLocation, selectedDate }: StockTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
 
   const { data: stockEntries, isLoading } = useQuery({
-    queryKey: ['stock-entries', selectedLocation, searchTerm, brandFilter],
+    queryKey: ['stock-entries', selectedLocation, searchTerm, brandFilter, selectedDate],
     queryFn: async (): Promise<StockEntry[]> => {
+      const date = format(selectedDate, "yyyy-MM-dd");
+
       let query = supabase
         .from('stock_entries')
         .select(`
@@ -56,7 +60,7 @@ export function StockTable({ selectedLocation }: StockTableProps) {
           stock_locations(name),
           phone_models(brand, model, storage_capacity, color)
         `)
-        .order('date', { ascending: false })
+        .eq('date', date)
         .order('created_at', { ascending: false });
 
       if (selectedLocation !== 'all') {

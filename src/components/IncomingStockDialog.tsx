@@ -93,14 +93,11 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       if (existingEntry) {
         // Update existing entry - add to incoming field
         const newIncoming = existingEntry.incoming + quantityNum;
-        const newNightStock = existingEntry.morning_stock + newIncoming + existingEntry.add_stock + 
-                             existingEntry.returns + existingEntry.adjustment - existingEntry.sold;
 
         const { error: updateError } = await supabase
           .from('stock_entries')
           .update({
             incoming: newIncoming,
-            night_stock: newNightStock,
             imei: imei || existingEntry.imei,
             notes: notes || existingEntry.notes
           })
@@ -108,18 +105,6 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
 
         if (updateError) throw updateError;
 
-        // Log the transaction
-        await supabase
-          .from('stock_transactions_log')
-          .insert({
-            stock_entry_id: existingEntry.id,
-            transaction_type: 'incoming_hp',
-            quantity: quantityNum,
-            previous_night_stock: existingEntry.night_stock,
-            new_night_stock: newNightStock,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
-            notes: `HP datang: ${notes || 'Tanpa catatan'}`
-          });
       } else {
         // Create new entry for today with incoming stock
         const { error: insertError } = await supabase
@@ -130,7 +115,6 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
             phone_model_id: selectedModel,
             morning_stock: 0,
             incoming: quantityNum,
-            night_stock: quantityNum, // Will be calculated by trigger
             imei: imei || null,
             notes: notes || null
           });
