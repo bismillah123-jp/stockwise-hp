@@ -81,80 +81,43 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Find the phone model
-      const phoneModel = phoneModels?.find(m => m.id === selectedModel);
-      if (!phoneModel) throw new Error('Model HP tidak ditemukan');
-
-      // Check if stock entry exists for the selected date
-      const { data: existingEntry, error: fetchError } = await supabase
+      // Create a new stock entry for each IMEI.
+      // The database schema has a UNIQUE constraint on (date, location_id, phone_model_id, imei)
+      // which prevents duplicate entries for the same phone on the same day.
+      const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
-        .select('*')
-        .eq('date', date)
-        .eq('location_id', selectedLocation)
-        .eq('phone_model_id', selectedModel)
-        .maybeSingle();
+        .insert({
+          date: date,
+          location_id: selectedLocation,
+          phone_model_id: selectedModel,
+          morning_stock: quantityNum, // A new item's stock starts at 1
+          imei: imei.trim(),
+          notes: notes || null,
+          // All other fields (incoming, add_stock, sold, etc.) default to 0 in the DB
+        })
+        .select()
+        .single();
 
-      if (fetchError) throw fetchError;
+      if (insertError) {
+        // Handle unique constraint violation
+        if (insertError.code === '23505') {
+          throw new Error(`Gagal: IMEI ${imei.trim()} sudah ada untuk model ini.`);
+        }
+        throw new Error(`Gagal menambahkan stok: ${insertError.message}`);
+      }
 
-      if (existingEntry) {
-        // Update existing entry - only add to morning_stock (not add_stock to avoid double counting)
-        const newMorningStock = existingEntry.morning_stock + quantityNum;
-        const previousNightStock = existingEntry.night_stock;
-
-        const { error: updateError } = await supabase
-          .from('stock_entries')
-          .update({
-            morning_stock: newMorningStock,
-            imei: imei || existingEntry.imei,
-            notes: notes || existingEntry.notes
-          })
-          .eq('id', existingEntry.id);
-
-        if (updateError) throw updateError;
-
-        // Calculate new night stock (will be updated by trigger)
-        const newNightStock = newMorningStock + existingEntry.incoming + existingEntry.add_stock + existingEntry.returns + existingEntry.adjustment - existingEntry.sold;
-
-        // Log the transaction
+      // Log the transaction if the new entry was created successfully
+      if (newEntry) {
         await supabase
           .from('stock_transactions_log')
           .insert({
-            stock_entry_id: existingEntry.id,
+            stock_entry_id: newEntry.id,
             transaction_type: 'add_stock',
             quantity: quantityNum,
-            previous_night_stock: previousNightStock,
-            new_night_stock: newNightStock,
-            notes: `Tambah stok: ${notes || 'Tanpa catatan'}`
+            previous_night_stock: 0, // It's a new item, so previous stock is 0
+            new_night_stock: newEntry.night_stock, // This value is calculated by the DB trigger
+            notes: `Stok baru ditambahkan: ${notes || 'Tanpa catatan'}`
           });
-
-      } else {
-        // Create new entry for the selected date with morning stock only
-        const { data: newEntry, error: insertError } = await supabase
-          .from('stock_entries')
-          .insert({
-            date: date,
-            location_id: selectedLocation,
-            phone_model_id: selectedModel,
-            morning_stock: quantityNum,
-            imei: imei || null,
-            notes: notes || null
-          }).select().single();
-
-        if (insertError) throw insertError;
-
-        // Log the transaction
-        if(newEntry) {
-            await supabase
-              .from('stock_transactions_log')
-              .insert({
-                stock_entry_id: newEntry.id,
-                transaction_type: 'add_stock',
-                quantity: quantityNum,
-                previous_night_stock: 0,
-                new_night_stock: quantityNum,
-                notes: `Tambah stok: ${notes || 'Tanpa catatan'}`
-              });
-        }
       }
     },
     onSuccess: () => {
