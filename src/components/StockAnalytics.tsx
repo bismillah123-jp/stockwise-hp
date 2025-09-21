@@ -5,9 +5,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { TrendingUp, Package, AlertTriangle, PieChart as PieChartIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface StockAnalyticsProps {
-  selectedLocation: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface StockAnalyticsProps {}
 
 interface TrendData {
   date: string;
@@ -31,30 +30,25 @@ const chartConfig = {
   "Rata-rata Stok": { label: "Rata-rata Stok", color: "hsl(var(--chart-4))" },
 };
 
-export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
+export function StockAnalytics(_props: StockAnalyticsProps) {
   // Fetch 30-day trend data
   const { data: trendData, isLoading: trendLoading } = useQuery({
-    queryKey: ['trend-data', selectedLocation],
+    queryKey: ['trend-data'],
     queryFn: async (): Promise<TrendData[]> => {
       // ... (omitted for brevity, same as original)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      let query = supabase
+      const query = supabase
         .from('stock_entries')
         .select(`date, sold, incoming, night_stock, stock_locations(name)`)
         .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
         .order('date');
 
-      if (selectedLocation !== 'all') {
-        const { data: locationData } = await supabase.from('stock_locations').select('id').eq('name', selectedLocation).single();
-        if (locationData) query = query.eq('location_id', locationData.id);
-      }
-
       const { data, error } = await query;
       if (error) throw error;
 
-      const groupedData = (data || []).reduce((acc, entry) => {
+      const groupedData = (data || []).reduce((acc: Record<string, { date: string; sales: number; incoming: number; stock: number; count: number }>, entry) => {
         const date = entry.date;
         if (!acc[date]) acc[date] = { date, sales: 0, incoming: 0, stock: 0, count: 0 };
         acc[date].sales += entry.sold;
@@ -62,7 +56,7 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
         acc[date].stock += entry.night_stock;
         acc[date].count += 1;
         return acc;
-      }, {} as Record<string, any>);
+      }, {});
 
       return Object.values(groupedData).map(item => ({
         date: new Date(item.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }),
@@ -75,17 +69,11 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
 
   // Fetch brand performance data
   const { data: brandData, isLoading: brandLoading } = useQuery({
-    queryKey: ['brand-data', selectedLocation],
+    queryKey: ['brand-data'],
     queryFn: async (): Promise<BrandData[]> => {
       // ... (omitted for brevity, same as original)
-      let query = supabase.from('stock_entries').select(`sold, night_stock, phone_models(brand), stock_locations(name)`);
+      const { data, error } = await supabase.from('stock_entries').select(`sold, night_stock, phone_models(brand), stock_locations(name)`);
 
-      if (selectedLocation !== 'all') {
-        const { data: locationData } = await supabase.from('stock_locations').select('id').eq('name', selectedLocation).single();
-        if (locationData) query = query.eq('location_id', locationData.id);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const groupedData = (data || []).reduce((acc, entry) => {
@@ -102,22 +90,16 @@ export function StockAnalytics({ selectedLocation }: StockAnalyticsProps) {
 
   // Fetch low stock alerts
   const { data: lowStockItems, isLoading: lowStockLoading } = useQuery({
-    queryKey: ['low-stock', selectedLocation],
+    queryKey: ['low-stock'],
     queryFn: async () => {
       // ... (omitted for brevity, same as original)
-      let query = supabase
+      const { data, error } = await supabase
         .from('stock_entries')
         .select(`night_stock, phone_models(brand, model, color), stock_locations(name)`)
         .lte('night_stock', 5)
         .gt('night_stock', 0)
         .order('night_stock');
 
-      if (selectedLocation !== 'all') {
-        const { data: locationData } = await supabase.from('stock_locations').select('id').eq('name', selectedLocation).single();
-        if (locationData) query = query.eq('location_id', locationData.id);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     }

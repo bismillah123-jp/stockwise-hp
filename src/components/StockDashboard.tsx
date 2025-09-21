@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,79 +17,84 @@ import { ThemeToggle } from "./ThemeToggle";
 import { MobileNavigation } from "./MobileNavigation";
 import { FabMenu } from "./FabMenu";
 
-interface LocationBreakdown {
-  [location: string]: {
-    morning_stock: number;
-    night_stock: number;
-    sold: number;
-  };
+interface LocationData {
+  morning_stock: number;
+  night_stock: number;
+  sold: number;
 }
 
 interface DashboardStats {
-  todaySales: number;
   totalMorningStock: number;
   totalNightStock: number;
-  incomingHP: number;
-  discrepancies: number;
-  locationBreakdown: LocationBreakdown;
+  totalSold: number;
+  totalIncoming: number;
+  totalTransfers: number;
+  totalFinalStock: number;
+  breakdown: {
+    [location: string]: LocationData;
+  };
+  transferBreakdown: {
+    toSoko: number;
+    toMbutoh: number;
+  };
 }
 
 export function StockDashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics'>('dashboard');
-  const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [date, setDate] = useState<Date>(new Date());
   const { toast } = useToast();
 
   // Fetch dashboard statistics
   const { data: stats, isLoading: statsLoading, refetch } = useQuery({
-    queryKey: ['dashboard-stats', selectedLocation, date],
+    queryKey: ['dashboard-stats', date],
     queryFn: async (): Promise<DashboardStats> => {
       const selectedDate = format(date, "yyyy-MM-dd");
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('stock_entries')
-        .select(`
-          sold,
-          morning_stock,
-          night_stock,
-          incoming,
-          adjustment,
-          stock_locations(name)
-        `)
+        .select(`*, stock_locations(name)`)
         .eq('date', selectedDate);
-
-      if (selectedLocation !== 'all') {
-        query = query.eq('stock_locations.name', selectedLocation);
-      }
-
-      const { data, error } = await query;
       
       if (error) throw error;
 
-      const todaySales = data?.reduce((sum, entry) => sum + entry.sold, 0) || 0;
-      const totalMorningStock = data?.reduce((sum, entry) => sum + entry.morning_stock, 0) || 0;
-      const totalNightStock = data?.reduce((sum, entry) => sum + entry.night_stock, 0) || 0;
-      const incomingHP = data?.reduce((sum, entry) => sum + entry.incoming, 0) || 0;
-      const discrepancies = data?.filter(entry => entry.adjustment !== 0).length || 0;
+      const totalMorningStock = data.reduce((sum, entry) => sum + entry.morning_stock, 0);
+      const totalNightStock = data.reduce((sum, entry) => sum + entry.night_stock, 0);
+      const totalSold = data.reduce((sum, entry) => sum + entry.sold, 0);
+      const totalIncoming = data.reduce((sum, entry) => sum + entry.incoming, 0);
+      const totalFinalStock = totalNightStock;
 
-      const locationBreakdown = (data || []).reduce((acc, entry) => {
+      const breakdown: { [location: string]: LocationData } = {};
+      let toSoko = 0;
+      let toMbutoh = 0;
+
+      for (const entry of data) {
         const loc = entry.stock_locations?.name || 'Unknown';
-        if (!acc[loc]) {
-          acc[loc] = { morning_stock: 0, night_stock: 0, sold: 0 };
+        if (!breakdown[loc]) {
+          breakdown[loc] = { morning_stock: 0, night_stock: 0, sold: 0 };
         }
-        acc[loc].morning_stock += entry.morning_stock;
-        acc[loc].night_stock += entry.night_stock;
-        acc[loc].sold += entry.sold;
-        return acc;
-      }, {} as LocationBreakdown);
+        breakdown[loc].morning_stock += entry.morning_stock;
+        breakdown[loc].night_stock += entry.night_stock;
+        breakdown[loc].sold += entry.sold;
+
+        if (entry.notes?.includes('Transfer In from SOKO')) {
+          toMbutoh += entry.adjustment;
+        }
+        if (entry.notes?.includes('Transfer In from MBUTOH')) {
+          toSoko += entry.adjustment;
+        }
+      }
+
+      const totalTransfers = toSoko + toMbutoh;
 
       return {
-        todaySales,
         totalMorningStock,
         totalNightStock,
-        incomingHP,
-        discrepancies,
-        locationBreakdown
+        totalSold,
+        totalIncoming,
+        totalTransfers,
+        totalFinalStock,
+        breakdown,
+        transferBreakdown: { toSoko, toMbutoh },
       };
     }
   });
@@ -141,19 +146,6 @@ export function StockDashboard() {
                   />
                 </PopoverContent>
               </Popover>
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="w-[120px] sm:w-[180px] text-sm">
-                  <SelectValue placeholder="Semua Lokasi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Lokasi</SelectItem>
-                  {locations?.map(location => (
-                    <SelectItem key={location.id} value={location.name}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <ThemeToggle />
               <Button variant="outline" size="icon" className="hidden sm:flex" onClick={() => supabase.auth.signOut()}>
                 <LogOut className="w-4 h-4" />
@@ -199,105 +191,100 @@ export function StockDashboard() {
           {/* Dashboard View */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              {/* KPI Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-                {[
-                  {
-                    title: "Penjualan",
-                    value: stats?.todaySales || 0,
-                    icon: TrendingUp,
-                    color: "text-green-500",
-                  },
-                  {
-                    title: "Stok Pagi",
-                    value: stats?.totalMorningStock || 0,
-                    icon: PackageOpen,
-                    color: "text-sky-500",
-                  },
-                  {
-                    title: "Stok Malam",
-                    value: stats?.totalNightStock || 0,
-                    icon: Package,
-                    color: "text-blue-500",
-                  },
-                  {
-                    title: "HP Datang",
-                    value: stats?.incomingHP || 0,
-                    icon: Truck,
-                    color: "text-purple-500",
-                  },
-                ].map((kpi, index) => {
-                  const Icon = kpi.icon;
-                  return (
-                    <Card key={index} className="border-border/50 bg-card/50 backdrop-blur">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          {kpi.title}
-                        </CardTitle>
-                        <Icon className={`h-5 w-5 ${kpi.color}`} />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold">
-                          {statsLoading ? (
-                            <div className="animate-pulse bg-muted h-8 w-16 rounded" />
-                          ) : (
-                            kpi.value.toLocaleString('id-ID')
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {/* Location Breakdown */}
-              {selectedLocation === 'all' && !statsLoading && stats?.locationBreakdown && (
-                <Card className="border-border/50 bg-card/50 backdrop-blur">
+              {/* New KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Total Stok Pagi */}
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Rincian Stok Per Lokasi</CardTitle>
+                    <CardTitle>Total Stok Pagi</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {Object.keys(stats.locationBreakdown).length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Lokasi</TableHead>
-                            <TableHead className="text-center">Stok Pagi</TableHead>
-                            <TableHead className="text-center">Stok Malam</TableHead>
-                            <TableHead className="text-center">Laku</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.entries(stats.locationBreakdown).map(([loc, stocks]) => (
-                            <TableRow key={loc}>
-                              <TableCell className="font-medium">{loc}</TableCell>
-                              <TableCell className="text-center text-sky-500 font-semibold">{stocks.morning_stock}</TableCell>
-                              <TableCell className="text-center text-blue-500 font-semibold">{stocks.night_stock}</TableCell>
-                              <TableCell className="text-center text-green-500 font-semibold">{stocks.sold}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Tidak ada data stok untuk tanggal yang dipilih.
-                      </p>
-                    )}
+                    <p className="text-4xl font-bold">{stats?.totalMorningStock ?? 0}</p>
+                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                      <span>Mbutoh: {stats?.breakdown['MBUTOH']?.morning_stock ?? 0}</span>
+                      <span>Soko: {stats?.breakdown['SOKO']?.morning_stock ?? 0}</span>
+                    </div>
                   </CardContent>
                 </Card>
-              )}
+
+                {/* HP Datang */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Unit Baru Masuk</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-4xl font-bold">{stats?.totalIncoming ?? 0}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Total Laku */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Total Laku</CardTitle>
+                    <CardDescription>Total semua lokasi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-4xl font-bold">{stats?.totalSold ?? 0}</p>
+                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                      <span>Mbutoh: {stats?.breakdown['MBUTOH']?.sold ?? 0}</span>
+                      <span>Soko: {stats?.breakdown['SOKO']?.sold ?? 0}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Transfer */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Transfer</CardTitle>
+                    <CardDescription>Total semua lokasi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-4xl font-bold">{stats?.totalTransfers ?? 0}</p>
+                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                      <span>Ke Soko: {stats?.transferBreakdown.toSoko ?? 0}</span>
+                      <span>Ke Mbutoh: {stats?.transferBreakdown.toMbutoh ?? 0}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Stok Malam */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Stok Malam</CardTitle>
+                    <CardDescription>Total stok malam semua lokasi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-4xl font-bold">{stats?.totalNightStock ?? 0}</p>
+                    <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                      <span>Mbutoh: {stats?.breakdown['MBUTOH']?.night_stock ?? 0}</span>
+                      <span>Soko: {stats?.breakdown['SOKO']?.night_stock ?? 0}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Total Stok Akhir */}
+                <Card className="md:col-span-2 lg:col-span-1">
+                  <CardHeader>
+                    <CardTitle>Total Stok Akhir</CardTitle>
+                    <CardDescription>Total semua lokasi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-4xl font-bold">{stats?.totalFinalStock ?? 0}</p>
+                  </CardContent>
+                </Card>
+              </div>
 
             </div>
           )}
 
           {/* Stock Table View */}
           {activeTab === 'table' && (
-            <StockTable selectedLocation={selectedLocation} selectedDate={date} />
+            <StockTable selectedDate={date} />
           )}
 
           {/* Analytics View */}
           {activeTab === 'analytics' && (
-            <StockAnalytics selectedLocation={selectedLocation} />
+            <StockAnalytics />
           )}
         </div>
       </main>

@@ -30,7 +30,6 @@ import { EditStockDialog } from "./EditStockDialog";
 import { TransferStockDialog } from "./TransferStockDialog";
 
 interface StockTableProps {
-  selectedLocation: string;
   selectedDate: Date;
 }
 
@@ -59,7 +58,7 @@ export interface StockEntry {
   };
 }
 
-export function StockTable({ selectedLocation, selectedDate }: StockTableProps) {
+export function StockTable({ selectedDate }: StockTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -71,11 +70,11 @@ export function StockTable({ selectedLocation, selectedDate }: StockTableProps) 
   const { toast } = useToast();
 
   const { data: stockEntries, isLoading } = useQuery({
-    queryKey: ['stock-entries', selectedLocation, searchTerm, brandFilter, selectedDate],
+    queryKey: ['stock-entries', searchTerm, brandFilter, selectedDate],
     queryFn: async (): Promise<StockEntry[]> => {
       const date = format(selectedDate, "yyyy-MM-dd");
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('stock_entries')
         .select(`
           *,
@@ -84,20 +83,6 @@ export function StockTable({ selectedLocation, selectedDate }: StockTableProps) 
         `)
         .eq('date', date)
         .order('created_at', { ascending: false });
-
-      if (selectedLocation !== 'all') {
-        const { data: locationData } = await supabase
-          .from('stock_locations')
-          .select('id')
-          .eq('name', selectedLocation)
-          .single();
-        
-        if (locationData) {
-          query = query.eq('location_id', locationData.id);
-        }
-      }
-
-      const { data, error } = await query;
       
       if (error) throw error;
 
