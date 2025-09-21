@@ -13,7 +13,6 @@ import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Cal
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
-import { ManualStockInput } from "./ManualStockInput";
 import { StockAnalytics } from "./StockAnalytics";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileNavigation } from "./MobileNavigation";

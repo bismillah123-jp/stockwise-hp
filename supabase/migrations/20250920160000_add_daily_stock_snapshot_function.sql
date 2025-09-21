@@ -67,7 +67,7 @@ SELECT cron.schedule(
 CREATE OR REPLACE FUNCTION update_night_stock()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.night_stock = NEW.morning_stock + NEW.incoming + NEW.add_stock - NEW.sold + NEW.adjustment - NEW.returns;
+    NEW.night_stock = NEW.morning_stock + NEW.incoming + NEW.add_stock - NEW.sold + NEW.adjustment + NEW.returns;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
