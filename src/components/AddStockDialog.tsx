@@ -25,7 +25,6 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [imei, setImei] = useState<string>("");
   const { toast } = useToast();
@@ -75,12 +74,12 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
 
   const addStockMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedLocation || !selectedModel || !quantity) {
-        throw new Error('Semua field wajib diisi');
+      if (!selectedLocation || !selectedModel || !imei.trim()) {
+        throw new Error('Lokasi, Model HP, dan IMEI wajib diisi');
       }
 
       const date = format(selectedDate, "yyyy-MM-dd");
-      const quantityNum = parseInt(quantity);
+      const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
       // Find the phone model
       const phoneModel = phoneModels?.find(m => m.id === selectedModel);
@@ -98,21 +97,23 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       if (fetchError) throw fetchError;
 
       if (existingEntry) {
-        // Update existing entry - add to morning_stock and add_stock fields
+        // Update existing entry - only add to morning_stock (not add_stock to avoid double counting)
         const newMorningStock = existingEntry.morning_stock + quantityNum;
-        const newAddStock = existingEntry.add_stock + quantityNum;
+        const previousNightStock = existingEntry.night_stock;
 
         const { error: updateError } = await supabase
           .from('stock_entries')
           .update({
             morning_stock: newMorningStock,
-            add_stock: newAddStock,
             imei: imei || existingEntry.imei,
             notes: notes || existingEntry.notes
           })
           .eq('id', existingEntry.id);
 
         if (updateError) throw updateError;
+
+        // Calculate new night stock (will be updated by trigger)
+        const newNightStock = newMorningStock + existingEntry.incoming + existingEntry.add_stock + existingEntry.returns + existingEntry.adjustment - existingEntry.sold;
 
         // Log the transaction
         await supabase
@@ -121,11 +122,13 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
             stock_entry_id: existingEntry.id,
             transaction_type: 'add_stock',
             quantity: quantityNum,
+            previous_night_stock: previousNightStock,
+            new_night_stock: newNightStock,
             notes: `Tambah stok: ${notes || 'Tanpa catatan'}`
           });
 
       } else {
-        // Create new entry for the selected date with add stock
+        // Create new entry for the selected date with morning stock only
         const { data: newEntry, error: insertError } = await supabase
           .from('stock_entries')
           .insert({
@@ -133,7 +136,6 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
             location_id: selectedLocation,
             phone_model_id: selectedModel,
             morning_stock: quantityNum,
-            add_stock: quantityNum,
             imei: imei || null,
             notes: notes || null
           }).select().single();
@@ -148,6 +150,8 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
                 stock_entry_id: newEntry.id,
                 transaction_type: 'add_stock',
                 quantity: quantityNum,
+                previous_night_stock: 0,
+                new_night_stock: quantityNum,
                 notes: `Tambah stok: ${notes || 'Tanpa catatan'}`
               });
         }
@@ -164,10 +168,8 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       // Reset form
       setSelectedLocation("");
       setSelectedDate(new Date());
-      setSelectedLocation("");
       setSelectedBrand("");
       setSelectedModel("");
-      setQuantity("");
       setNotes("");
       setImei("");
     },
@@ -266,23 +268,14 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Jumlah</Label>
+            <Label>IMEI *</Label>
             <Input
-              type="number"
-              placeholder="Masukkan jumlah"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              min="1"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>IMEI (Opsional)</Label>
-            <Input
-              placeholder="Masukkan IMEI"
+              placeholder="Masukkan IMEI (wajib)"
               value={imei}
               onChange={(e) => setImei(e.target.value)}
+              required
             />
+            <p className="text-sm text-muted-foreground">1 IMEI = 1 unit stok</p>
           </div>
 
           <div className="space-y-2">

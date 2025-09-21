@@ -25,7 +25,6 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [imei, setImei] = useState<string>("");
   const { toast } = useToast();
@@ -75,12 +74,12 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
 
   const incomingStockMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedLocation || !selectedModel || !quantity) {
-        throw new Error('Semua field wajib diisi');
+      if (!selectedLocation || !selectedModel || !imei.trim()) {
+        throw new Error('Lokasi, Model HP, dan IMEI wajib diisi');
       }
 
       const date = format(selectedDate, "yyyy-MM-dd");
-      const quantityNum = parseInt(quantity);
+      const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
       // Find the phone model
       const phoneModel = phoneModels?.find(m => m.id === selectedModel);
@@ -100,6 +99,7 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       if (existingEntry) {
         // Update existing entry - add to incoming field
         const newIncoming = existingEntry.incoming + quantityNum;
+        const previousNightStock = existingEntry.night_stock;
 
         const { error: updateError } = await supabase
           .from('stock_entries')
@@ -112,6 +112,9 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
 
         if (updateError) throw updateError;
 
+        // Calculate new night stock (will be updated by trigger)
+        const newNightStock = existingEntry.morning_stock + newIncoming + existingEntry.add_stock + existingEntry.returns + existingEntry.adjustment - existingEntry.sold;
+
         // Log the transaction
         await supabase
           .from('stock_transactions_log')
@@ -119,6 +122,8 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
             stock_entry_id: existingEntry.id,
             transaction_type: 'incoming',
             quantity: quantityNum,
+            previous_night_stock: previousNightStock,
+            new_night_stock: newNightStock,
             notes: `HP Datang: ${notes || 'Tanpa catatan'}`
           });
 
@@ -145,6 +150,8 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
                     stock_entry_id: newEntry.id,
                     transaction_type: 'incoming',
                     quantity: quantityNum,
+                    previous_night_stock: 0,
+                    new_night_stock: quantityNum,
                     notes: `HP Datang: ${notes || 'Tanpa catatan'}`
                 });
         }
@@ -163,7 +170,6 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       setSelectedLocation("");
       setSelectedBrand("");
       setSelectedModel("");
-      setQuantity("");
       setNotes("");
       setImei("");
     },
@@ -262,23 +268,14 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
           </div>
 
           <div className="space-y-2">
-            <Label>Jumlah</Label>
+            <Label>IMEI *</Label>
             <Input
-              type="number"
-              placeholder="Masukkan jumlah"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              min="1"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>IMEI (Opsional)</Label>
-            <Input
-              placeholder="Masukkan IMEI"
+              placeholder="Masukkan IMEI (wajib)"
               value={imei}
               onChange={(e) => setImei(e.target.value)}
+              required
             />
+            <p className="text-sm text-muted-foreground">1 IMEI = 1 unit stok</p>
           </div>
 
           <div className="space-y-2">
