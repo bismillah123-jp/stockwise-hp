@@ -112,21 +112,42 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
 
         if (updateError) throw updateError;
 
+        // Log the transaction
+        await supabase
+          .from('stock_transactions_log')
+          .insert({
+            stock_entry_id: existingEntry.id,
+            transaction_type: 'incoming',
+            quantity: quantityNum,
+            notes: `HP Datang: ${notes || 'Tanpa catatan'}`
+          });
+
       } else {
         // Create new entry for the selected date with incoming stock
-        const { error: insertError } = await supabase
+        const { data: newEntry, error: insertError } = await supabase
           .from('stock_entries')
           .insert({
             date: date,
             location_id: selectedLocation,
             phone_model_id: selectedModel,
-            morning_stock: 0,
             incoming: quantityNum,
             imei: imei || null,
             notes: notes || null
-          });
+          }).select().single();
 
         if (insertError) throw insertError;
+
+        // Log the transaction
+        if (newEntry) {
+            await supabase
+                .from('stock_transactions_log')
+                .insert({
+                    stock_entry_id: newEntry.id,
+                    transaction_type: 'incoming',
+                    quantity: quantityNum,
+                    notes: `HP Datang: ${notes || 'Tanpa catatan'}`
+                });
+        }
       }
     },
     onSuccess: () => {

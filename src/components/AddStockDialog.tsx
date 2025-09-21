@@ -113,9 +113,20 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           .eq('id', existingEntry.id);
 
         if (updateError) throw updateError;
+
+        // Log the transaction
+        await supabase
+          .from('stock_transactions_log')
+          .insert({
+            stock_entry_id: existingEntry.id,
+            transaction_type: 'add_stock',
+            quantity: quantityNum,
+            notes: `Tambah stok: ${notes || 'Tanpa catatan'}`
+          });
+
       } else {
         // Create new entry for the selected date with add stock
-        const { error: insertError } = await supabase
+        const { data: newEntry, error: insertError } = await supabase
           .from('stock_entries')
           .insert({
             date: date,
@@ -125,9 +136,21 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
             add_stock: quantityNum,
             imei: imei || null,
             notes: notes || null
-          });
+          }).select().single();
 
         if (insertError) throw insertError;
+
+        // Log the transaction
+        if(newEntry) {
+            await supabase
+              .from('stock_transactions_log')
+              .insert({
+                stock_entry_id: newEntry.id,
+                transaction_type: 'add_stock',
+                quantity: quantityNum,
+                notes: `Tambah stok: ${notes || 'Tanpa catatan'}`
+              });
+        }
       }
     },
     onSuccess: () => {
