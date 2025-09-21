@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowRightLeft } from "lucide-react";
+import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowLeftRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
@@ -258,7 +258,7 @@ export function StockDashboard() {
                   <div className="absolute inset-0 bg-gradient-to-br from-info/5 via-transparent to-info/10 opacity-50" />
                   <CardHeader className="relative pb-2">
                     <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <ArrowRightLeft className="w-4 h-4 text-info" />
+                      <ArrowLeftRight className="w-4 h-4 text-info" />
                       Transfer
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground">Antar lokasi</CardDescription>
