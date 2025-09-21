@@ -43,6 +43,28 @@ export function StockDashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics'>('dashboard');
   const [date, setDate] = useState<Date>(new Date());
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Set up real-time subscription for stock entries
+  useEffect(() => {
+    const channel = supabase
+      .channel('stock_entries_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'stock_entries' },
+        (payload) => {
+          console.log('Change received!', payload);
+          // Invalidate all queries to refetch data
+          queryClient.invalidateQueries();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Fetch dashboard statistics
   const { data: stats, isLoading: statsLoading, refetch } = useQuery({
