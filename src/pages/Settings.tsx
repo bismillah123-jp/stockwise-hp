@@ -26,24 +26,59 @@ const Settings = () => {
     document.body.removeChild(link);
   };
 
-  const handleExport = async (tableName: 'stock_entries' | 'phone_models') => {
+  const handleExportAllStock = async () => {
     setIsExporting(true);
-    toast({ title: "Mengekspor data...", description: `Memuat data dari tabel ${tableName}.` });
+    toast({ title: "Mengekspor data...", description: "Memuat semua data stok untuk di-export." });
 
     try {
-      const { data, error } = await supabase.from(tableName).select('*');
+      const { data, error } = await supabase
+        .from('stock_entries')
+        .select(`
+          date,
+          imei,
+          notes,
+          morning_stock,
+          incoming,
+          add_stock,
+          returns,
+          sold,
+          adjustment,
+          night_stock,
+          stock_locations ( name ),
+          phone_models ( brand, model, storage_capacity, color )
+        `)
+        .order('date', { ascending: false });
 
       if (error) throw error;
       if (!data || data.length === 0) {
-        toast({ title: "Tidak ada data", description: `Tidak ada data untuk diekspor dari ${tableName}.`, variant: "destructive" });
+        toast({ title: "Tidak ada data", description: "Tidak ada data stok untuk diekspor.", variant: "destructive" });
         return;
       }
 
-      const csv = Papa.unparse(data);
-      const filename = `${tableName}_${new Date().toISOString().split('T')[0]}.csv`;
+      // Flatten the nested data
+      const flattenedData = data.map(entry => ({
+        Tanggal: entry.date,
+        Lokasi: entry.stock_locations?.name || 'N/A',
+        Merk: entry.phone_models?.brand || 'N/A',
+        Model: entry.phone_models?.model || 'N/A',
+        Penyimpanan: entry.phone_models?.storage_capacity || 'N/A',
+        Warna: entry.phone_models?.color || 'N/A',
+        IMEI: entry.imei,
+        Catatan: entry.notes,
+        Stok_Pagi: entry.morning_stock,
+        Masuk: entry.incoming,
+        Tambah_Stok: entry.add_stock,
+        Return: entry.returns,
+        Terjual: entry.sold,
+        Penyesuaian: entry.adjustment,
+        Stok_Malam: entry.night_stock,
+      }));
+
+      const csv = Papa.unparse(flattenedData);
+      const filename = `stock_export_${new Date().toISOString().split('T')[0]}.csv`;
       downloadCSV(csv, filename);
 
-      toast({ title: "Ekspor Berhasil", description: `${data.length} baris telah diekspor dari ${tableName}.` });
+      toast({ title: "Ekspor Berhasil", description: `${data.length} baris data stok telah diekspor.` });
 
     } catch (error: any) {
       toast({ title: "Ekspor Gagal", description: error.message, variant: "destructive" });
@@ -83,15 +118,12 @@ const Settings = () => {
         <CardHeader>
           <CardTitle>Export Data</CardTitle>
           <CardDescription>
-            Download your data as CSV files.
+            Download all of your stock data in a single, human-readable CSV file.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-4">
-          <Button onClick={() => handleExport('stock_entries')} disabled={isExporting}>
-            Export Stock Entries
-          </Button>
-          <Button onClick={() => handleExport('phone_models')} disabled={isExporting}>
-            Export Phone Models
+        <CardContent>
+          <Button onClick={handleExportAllStock} disabled={isExporting}>
+            {isExporting ? "Mengekspor..." : "Export All Stock Data"}
           </Button>
         </CardContent>
       </Card>
