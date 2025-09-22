@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Callback from "./pages/Callback";
+import Settings from "./pages/Settings";
 import { supabase } from "./integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
@@ -54,6 +55,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/callback" element={<Callback />} />
         <Route path="/" element={session ? <Index /> : null} />
+        <Route path="/settings" element={session ? <Settings /> : null} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
