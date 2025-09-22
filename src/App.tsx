@@ -6,6 +6,7 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Settings from "./pages/Settings";
 import Callback from "./pages/Callback";
 import { supabase } from "./integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
@@ -33,7 +34,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !session && location.pathname !== '/login' && location.pathname !== '/callback') {
+    if (!loading && !session && !['/login', '/callback'].includes(location.pathname)) {
       navigate('/login');
     }
   }, [session, loading, location.pathname, navigate]);
@@ -54,6 +55,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/callback" element={<Callback />} />
         <Route path="/" element={session ? <Index /> : null} />
+        <Route path="/settings" element={session ? <Settings /> : null} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

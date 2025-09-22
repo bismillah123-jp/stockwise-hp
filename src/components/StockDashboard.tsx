@@ -8,11 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeftRight, BarChart3, Calendar as CalendarIcon, LogOut, Moon, Package, Plus, Sun, Tag, TrendingUp } from "lucide-react";
+import { ArrowLeftRight, BarChart3, Calendar as CalendarIcon, LogOut, Moon, Package, Plus, Sun, Tag, TrendingUp, Settings as SettingsIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
 import { StockAnalytics } from "./StockAnalytics";
+import Settings from "@/pages/Settings";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileNavigation } from "./MobileNavigation";
 import { FabMenu } from "./FabMenu";
@@ -40,7 +41,7 @@ interface DashboardStats {
 }
 
 export function StockDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics' | 'settings'>('dashboard');
   const [date, setDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -182,14 +183,15 @@ export function StockDashboard() {
             {[
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'table', label: 'Data Stok', icon: Package },
-              { id: 'analytics', label: 'Statistik', icon: TrendingUp }
+              { id: 'analytics', label: 'Statistik', icon: TrendingUp },
+              { id: 'settings', label: 'Pengaturan', icon: SettingsIcon },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
                 <Button
                   key={tab.id}
                   variant="ghost"
-                  onClick={() => setActiveTab(tab.id as 'dashboard' | 'table' | 'analytics')}
+                  onClick={() => setActiveTab(tab.id as any)}
                   className={`h-12 rounded-none border-b-2 ${
                     activeTab === tab.id
                       ? 'border-primary text-primary'
@@ -304,6 +306,11 @@ export function StockDashboard() {
           {/* Analytics View */}
           {activeTab === 'analytics' && (
             <StockAnalytics />
+          )}
+
+          {/* Settings View */}
+          {activeTab === 'settings' && (
+            <Settings />
           )}
         </div>
       </main>
