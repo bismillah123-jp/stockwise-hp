@@ -12,6 +12,7 @@ import type { Session } from "@supabase/supabase-js";
 
 const App = () => {
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,6 +20,7 @@ const App = () => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
+      setLoading(false);
     };
 
     getSession();
@@ -31,10 +33,18 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (!session && location.pathname !== '/login' && location.pathname !== '/callback') {
+    if (!loading && !session && location.pathname !== '/login' && location.pathname !== '/callback') {
       navigate('/login');
     }
-  }, [session, location.pathname, navigate]);
+  }, [session, loading, location.pathname, navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>
