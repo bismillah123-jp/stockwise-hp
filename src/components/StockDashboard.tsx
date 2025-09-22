@@ -8,11 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowLeftRight } from "lucide-react";
+import { Plus, Truck, TrendingUp, AlertTriangle, Package, BarChart3, LogOut, Calendar as CalendarIcon, PackageOpen, ArrowLeftRight, Settings as SettingsIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StockTable } from "./StockTable";
 import { StockAnalytics } from "./StockAnalytics";
+import Settings from "@/pages/Settings";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileNavigation } from "./MobileNavigation";
 import { FabMenu } from "./FabMenu";
@@ -40,7 +41,7 @@ interface DashboardStats {
 }
 
 export function StockDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics' | 'settings'>('dashboard');
   const [date, setDate] = useState<Date>(new Date());
   const { toast } = useToast();
 
@@ -162,14 +163,15 @@ export function StockDashboard() {
             {[
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'table', label: 'Data Stok', icon: Package },
-              { id: 'analytics', label: 'Statistik', icon: TrendingUp }
+              { id: 'analytics', label: 'Statistik', icon: TrendingUp },
+              { id: 'settings', label: 'Pengaturan', icon: SettingsIcon },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
                 <Button
                   key={tab.id}
                   variant="ghost"
-                  onClick={() => setActiveTab(tab.id as 'dashboard' | 'table' | 'analytics')}
+                  onClick={() => setActiveTab(tab.id as any)}
                   className={`h-12 rounded-none border-b-2 ${
                     activeTab === tab.id
                       ? 'border-primary text-primary'
@@ -193,125 +195,82 @@ export function StockDashboard() {
             <div className="space-y-6">
               {/* Modern KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Total Stok Pagi */}
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-50" />
-                  <CardHeader className="relative pb-2">
-                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <Package className="w-4 h-4 text-primary" />
-                      Total Stok Pagi
-                    </CardTitle>
+                {/* Stok Pagi */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">Stok Pagi</CardTitle>
+                    <Sun className="w-5 h-5 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent className="relative">
-                    <p className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent mb-3">
-                      {stats?.totalMorningStock ?? 0}
+                  <CardContent>
+                    <div className="text-3xl font-bold">{stats?.totalMorningStock ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Mbutoh: {stats?.breakdown['MBUTOH']?.morning_stock ?? 0} | Soko: {stats?.breakdown['SOKO']?.morning_stock ?? 0}
                     </p>
-                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
-                      <span className="font-medium">Mbutoh: {stats?.breakdown['MBUTOH']?.morning_stock ?? 0}</span>
-                      <span className="font-medium">Soko: {stats?.breakdown['SOKO']?.morning_stock ?? 0}</span>
-                    </div>
                   </CardContent>
                 </Card>
 
                 {/* HP Datang */}
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-br from-success/5 via-transparent to-success/10 opacity-50" />
-                  <CardHeader className="relative pb-2">
-                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-success" />
-                      Unit Baru Masuk
-                    </CardTitle>
+                <Card className="bg-green-500/10 border-green-500/20">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">HP Datang</CardTitle>
+                    <Plus className="w-5 h-5 text-green-600" />
                   </CardHeader>
-                  <CardContent className="relative">
-                    <p className="text-3xl font-bold text-success mb-3">
-                      {stats?.totalIncoming ?? 0}
-                    </p>
-                    <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
-                      Unit yang masuk hari ini
-                    </div>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{stats?.totalIncoming ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">Unit Baru Masuk</p>
                   </CardContent>
                 </Card>
 
                 {/* Total Laku */}
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-br from-warning/5 via-transparent to-warning/10 opacity-50" />
-                  <CardHeader className="relative pb-2">
-                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-warning" />
-                      Total Terjual
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Semua lokasi</CardDescription>
+                <Card className="bg-red-500/10 border-red-500/20">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">Total Laku</CardTitle>
+                    <Tag className="w-5 h-5 text-red-600" />
                   </CardHeader>
-                  <CardContent className="relative">
-                    <p className="text-3xl font-bold text-warning mb-3">
-                      {stats?.totalSold ?? 0}
+                  <CardContent>
+                    <div className="text-3xl font-bold">{stats?.totalSold ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Mbutoh: {stats?.breakdown['MBUTOH']?.sold ?? 0} | Soko: {stats?.breakdown['SOKO']?.sold ?? 0}
                     </p>
-                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
-                      <span className="font-medium">Mbutoh: {stats?.breakdown['MBUTOH']?.sold ?? 0}</span>
-                      <span className="font-medium">Soko: {stats?.breakdown['SOKO']?.sold ?? 0}</span>
-                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Transfer */}
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-br from-info/5 via-transparent to-info/10 opacity-50" />
-                  <CardHeader className="relative pb-2">
-                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <ArrowLeftRight className="w-4 h-4 text-info" />
-                      Transfer
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Antar lokasi</CardDescription>
+                <Card className="bg-blue-500/10 border-blue-500/20">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">Transfer</CardTitle>
+                    <ArrowLeftRight className="w-5 h-5 text-blue-600" />
                   </CardHeader>
-                  <CardContent className="relative">
-                    <p className="text-3xl font-bold text-info mb-3">
-                      {stats?.totalTransfers ?? 0}
+                  <CardContent>
+                    <div className="text-3xl font-bold">{stats?.totalTransfers ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Ke Soko: {stats?.transferBreakdown.toSoko ?? 0} | Ke Mbutoh: {stats?.transferBreakdown.toMbutoh ?? 0}
                     </p>
-                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
-                      <span className="font-medium">Ke Soko: {stats?.transferBreakdown.toSoko ?? 0}</span>
-                      <span className="font-medium">Ke Mbutoh: {stats?.transferBreakdown.toMbutoh ?? 0}</span>
-                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Stok Malam */}
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 opacity-50" />
-                  <CardHeader className="relative pb-2">
-                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <PackageOpen className="w-4 h-4 text-primary" />
-                      Stok Malam
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Stok akhir hari</CardDescription>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">Stok Malam</CardTitle>
+                    <Moon className="w-5 h-5 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent className="relative">
-                    <p className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent mb-3">
-                      {stats?.totalNightStock ?? 0}
+                  <CardContent>
+                    <div className="text-3xl font-bold">{stats?.totalNightStock ?? 0}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Mbutoh: {stats?.breakdown['MBUTOH']?.night_stock ?? 0} | Soko: {stats?.breakdown['SOKO']?.night_stock ?? 0}
                     </p>
-                    <div className="flex justify-between text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
-                      <span className="font-medium">Mbutoh: {stats?.breakdown['MBUTOH']?.night_stock ?? 0}</span>
-                      <span className="font-medium">Soko: {stats?.breakdown['SOKO']?.night_stock ?? 0}</span>
-                    </div>
                   </CardContent>
                 </Card>
 
                 {/* Total Stok Akhir */}
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 md:col-span-2 lg:col-span-1">
-                  <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10 opacity-50" />
-                  <CardHeader className="relative pb-2">
-                    <CardTitle className="text-base font-semibold text-foreground/90 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-accent" />
-                      Total Stok Akhir
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground">Semua lokasi gabungan</CardDescription>
+                <Card className="bg-primary text-primary-foreground">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base font-medium">Total Stok Akhir</CardTitle>
+                    <Package className="w-5 h-5" />
                   </CardHeader>
-                  <CardContent className="relative">
-                    <p className="text-3xl font-bold text-accent-foreground mb-3">
-                      {stats?.totalFinalStock ?? 0}
-                    </p>
-                    <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
-                      Stok tersedia saat ini
-                    </div>
+                  <CardContent>
+                    <div className="text-3xl font-bold">{stats?.totalFinalStock ?? 0}</div>
                   </CardContent>
                 </Card>
               </div>
@@ -327,6 +286,11 @@ export function StockDashboard() {
           {/* Analytics View */}
           {activeTab === 'analytics' && (
             <StockAnalytics />
+          )}
+
+          {/* Settings View */}
+          {activeTab === 'settings' && (
+            <Settings />
           )}
         </div>
       </main>

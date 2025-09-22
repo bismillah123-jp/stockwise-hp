@@ -81,80 +81,39 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Find the phone model
-      const phoneModel = phoneModels?.find(m => m.id === selectedModel);
-      if (!phoneModel) throw new Error('Model HP tidak ditemukan');
-
-      // Check if stock entry exists for the selected date
-      const { data: existingEntry, error: fetchError } = await supabase
+      // Create a new stock entry for each incoming IMEI.
+      const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
-        .select('*')
-        .eq('date', date)
-        .eq('location_id', selectedLocation)
-        .eq('phone_model_id', selectedModel)
-        .maybeSingle();
+        .insert({
+          date: date,
+          location_id: selectedLocation,
+          phone_model_id: selectedModel,
+          incoming: quantityNum, // This marks the item as incoming
+          imei: imei.trim(),
+          notes: notes || null,
+        })
+        .select()
+        .single();
 
-      if (fetchError) throw fetchError;
+      if (insertError) {
+        if (insertError.code === '23505') {
+          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal ini.`);
+        }
+        throw new Error(`Gagal mencatat HP datang: ${insertError.message}`);
+      }
 
-      if (existingEntry) {
-        // Update existing entry - add to incoming field
-        const newIncoming = existingEntry.incoming + quantityNum;
-        const previousNightStock = existingEntry.night_stock;
-
-        const { error: updateError } = await supabase
-          .from('stock_entries')
-          .update({
-            incoming: newIncoming,
-            imei: imei || existingEntry.imei,
-            notes: notes || existingEntry.notes
-          })
-          .eq('id', existingEntry.id);
-
-        if (updateError) throw updateError;
-
-        // Calculate new night stock (will be updated by trigger)
-        const newNightStock = existingEntry.morning_stock + newIncoming + existingEntry.add_stock + existingEntry.returns + existingEntry.adjustment - existingEntry.sold;
-
-        // Log the transaction
+      // Log the transaction if the new entry was created successfully
+      if (newEntry) {
         await supabase
           .from('stock_transactions_log')
           .insert({
-            stock_entry_id: existingEntry.id,
+            stock_entry_id: newEntry.id,
             transaction_type: 'incoming',
             quantity: quantityNum,
-            previous_night_stock: previousNightStock,
-            new_night_stock: newNightStock,
+            previous_night_stock: 0, // It's a new item, so previous stock is 0
+            new_night_stock: newEntry.night_stock, // This value is calculated by the DB trigger
             notes: `HP Datang: ${notes || 'Tanpa catatan'}`
           });
-
-      } else {
-        // Create new entry for the selected date with incoming stock
-        const { data: newEntry, error: insertError } = await supabase
-          .from('stock_entries')
-          .insert({
-            date: date,
-            location_id: selectedLocation,
-            phone_model_id: selectedModel,
-            incoming: quantityNum,
-            imei: imei || null,
-            notes: notes || null
-          }).select().single();
-
-        if (insertError) throw insertError;
-
-        // Log the transaction
-        if (newEntry) {
-            await supabase
-                .from('stock_transactions_log')
-                .insert({
-                    stock_entry_id: newEntry.id,
-                    transaction_type: 'incoming',
-                    quantity: quantityNum,
-                    previous_night_stock: 0,
-                    new_night_stock: quantityNum,
-                    notes: `HP Datang: ${notes || 'Tanpa catatan'}`
-                });
-        }
       }
     },
     onSuccess: () => {
