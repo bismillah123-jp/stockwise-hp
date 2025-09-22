@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,9 +52,7 @@ export function StockDashboard() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'stock_entries' },
-        (payload) => {
-          console.log('Change received!', payload);
-          // Invalidate all queries to refetch data
+        () => {
           queryClient.invalidateQueries();
         }
       )
