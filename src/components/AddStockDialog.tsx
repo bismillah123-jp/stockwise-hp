@@ -81,27 +81,26 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Add Stock: Creates a new entry representing corrected morning inventory
-      // Both morning_stock and add_stock are set to represent this is a morning stock correction
+      // Add Stock: Corrects morning stock - both morning_stock and night_stock should be the same after correction
+      // This represents a correction to the initial morning inventory
       const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
         .insert({
           date: date,
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          morning_stock: quantityNum, // This represents the corrected morning stock
-          add_stock: quantityNum, // This ensures night_stock is also increased via trigger
+          morning_stock: quantityNum, // Set the corrected morning stock
           imei: imei.trim(),
           notes: notes || null,
-          // Other fields default to 0 in the DB
+          // All other fields remain 0, so night_stock = morning_stock (1) via trigger
         })
         .select()
         .single();
 
       if (insertError) {
-        // Handle unique constraint violation
+        // Handle unique constraint violation for IMEI
         if (insertError.code === '23505') {
-          throw new Error(`Gagal: IMEI ${imei.trim()} sudah ada untuk model ini.`);
+          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal dan model ini.`);
         }
         throw new Error(`Gagal menambahkan stok: ${insertError.message}`);
       }
@@ -114,9 +113,9 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
             stock_entry_id: newEntry.id,
             transaction_type: 'add_stock',
             quantity: quantityNum,
-            previous_night_stock: 0, // It's a new item, so previous stock is 0
-            new_night_stock: newEntry.night_stock, // This value is calculated by the DB trigger
-            notes: `Stok baru ditambahkan: ${notes || 'Tanpa catatan'}`
+            previous_night_stock: 0, // It's a new corrected morning stock entry
+            new_night_stock: newEntry.night_stock, // Should equal morning_stock after correction
+            notes: `Koreksi stok pagi: ${notes || 'Tanpa catatan'}`
           });
       }
     },

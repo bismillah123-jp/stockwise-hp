@@ -81,25 +81,26 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Incoming HP: Creates a new entry for goods that arrived during the day
-      // Only incoming is set, morning_stock stays 0 since it didn't exist in the morning
+      // Incoming HP: HP yang datang di tengah hari
+      // morning_stock = 0 (tidak ada di pagi hari), incoming = 1
+      // night_stock = 0 + 1 + 0 + 0 + 0 - 0 = 1 (via trigger)
       const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
         .insert({
           date: date,
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          incoming: quantityNum, // Only affects night_stock via trigger, not morning_stock
+          morning_stock: 0, // Tidak ada di pagi hari
+          incoming: quantityNum, // HP datang di tengah hari
           imei: imei.trim(),
           notes: notes || null,
-          // morning_stock stays 0 since this item wasn't present in the morning
         })
         .select()
         .single();
 
       if (insertError) {
         if (insertError.code === '23505') {
-          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal ini.`);
+          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal dan model ini.`);
         }
         throw new Error(`Gagal mencatat HP datang: ${insertError.message}`);
       }
@@ -112,8 +113,8 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
             stock_entry_id: newEntry.id,
             transaction_type: 'incoming',
             quantity: quantityNum,
-            previous_night_stock: 0, // It's a new item, so previous stock is 0
-            new_night_stock: newEntry.night_stock, // This value is calculated by the DB trigger
+            previous_night_stock: 0, // HP baru datang
+            new_night_stock: newEntry.night_stock, // Should be 1 (incoming only)
             notes: `HP Datang: ${notes || 'Tanpa catatan'}`
           });
       }
