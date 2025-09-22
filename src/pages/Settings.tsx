@@ -76,7 +76,7 @@ const Settings = () => {
 
   const importMutation = useMutation({
     mutationFn: async (entries: any[]) => {
-      const { error } = await supabase.rpc('bulk_insert_stock', { entries });
+      const { error } = await supabase.rpc('bulk_insert_stock' as any, { entries });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -177,7 +177,7 @@ const Settings = () => {
 
   const resetMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc('reset_all_data');
+      const { error } = await supabase.rpc('reset_all_data' as any);
       if (error) throw error;
     },
     onSuccess: () => {
