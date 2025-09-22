@@ -1,242 +1,215 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, TrendingUp, Package, Clock } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { TrendingUp, Package, AlertTriangle, PieChart as PieChartIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { differenceInDays } from "date-fns";
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface StockAnalyticsProps {}
+
+interface TrendData {
+  date: string;
+  Penjualan: number;
+  "HP Datang": number;
+  "Rata-rata Stok": number;
+}
+
+interface BrandData {
+  brand: string;
+  stok: number;
+  penjualan: number;
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
-// Main Analytics Component
-export function StockAnalytics() {
-  // --- DATA QUERIES ---
+const chartConfig = {
+  stok: { label: "Stok", color: "hsl(var(--chart-1))" },
+  penjualan: { label: "Penjualan", color: "hsl(var(--chart-2))" },
+  "HP Datang": { label: "HP Datang", color: "hsl(var(--chart-3))" },
+  "Rata-rata Stok": { label: "Rata-rata Stok", color: "hsl(var(--chart-4))" },
+};
 
-  // 1. Query for KPI cards
-  const { data: kpiStats, isLoading: kpiLoading } = useQuery({
-    queryKey: ['kpi-stats'],
-    queryFn: async () => {
+export function StockAnalytics(_props: StockAnalyticsProps) {
+  // Fetch 30-day trend data
+  const { data: trendData, isLoading: trendLoading } = useQuery({
+    queryKey: ['trend-data'],
+    queryFn: async (): Promise<TrendData[]> => {
+      // ... (omitted for brevity, same as original)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      // Fetch all relevant data in parallel
-      const [
-        { data: monthlySalesData, error: salesError },
-        { data: availableStockData, error: stockError },
-        { data: oldestStockData, error: oldestError }
-      ] = await Promise.all([
-        supabase.from('stock_entries').select('sold, phone_models(brand)').gte('date', thirtyDaysAgo.toISOString()),
-        supabase.from('stock_entries').select('id').gt('night_stock', 0),
-        supabase.from('stock_entries').select('date, phone_models(model)').gt('night_stock', 0).order('date', { ascending: true }).limit(1)
-      ]);
+      const query = supabase
+        .from('stock_entries')
+        .select(`date, sold, incoming, night_stock, stock_locations(name)`)
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+        .order('date');
 
-      if (salesError || stockError || oldestError) {
-        throw new Error(salesError?.message || stockError?.message || oldestError?.message);
-      }
-
-      // Process sales data
-      const totalSoldMonthly = monthlySalesData?.filter(e => e.sold > 0).length || 0;
-      const brandSales = monthlySalesData?.filter(e => e.sold > 0).reduce((acc, entry) => {
-        const brand = entry.phone_models?.brand || 'Unknown';
-        acc[brand] = (acc[brand] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      const bestSellingBrand = brandSales && Object.keys(brandSales).length > 0
-        ? Object.entries(brandSales).sort((a, b) => b[1] - a[1])[0]
-        : null;
-
-      // Process available stock
-      const availableStock = availableStockData?.length || 0;
-
-      // Process oldest stock
-      const oldestStock = oldestStockData && oldestStockData.length > 0 ? {
-        model: oldestStockData[0].phone_models?.model || 'N/A',
-        days: differenceInDays(new Date(), new Date(oldestStockData[0].date)),
-      } : null;
-
-      return {
-        totalSoldMonthly,
-        availableStock,
-        bestSellingBrand: bestSellingBrand ? `${bestSellingBrand[0]} (${bestSellingBrand[1]})` : 'N/A',
-        oldestStock: oldestStock ? `${oldestStock.model} (${oldestStock.days} hari)` : 'N/A',
-      };
-    }
-  });
-
-  // 2. Query for Daily Sales Chart
-  const { data: dailySalesData, isLoading: dailySalesLoading } = useQuery({
-    queryKey: ['daily-sales-chart'],
-    queryFn: async () => {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const { data, error } = await supabase.from('stock_entries').select('date, sold').gte('date', thirtyDaysAgo.toISOString()).order('date');
+      const { data, error } = await query;
       if (error) throw error;
 
-      const grouped = data.filter(e => e.sold > 0).reduce((acc, entry) => {
-        const date = new Date(entry.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-        acc[date] = (acc[date] || 0) + 1;
+      const groupedData = (data || []).reduce((acc: Record<string, { date: string; sales: number; incoming: number; stock: number; count: number }>, entry) => {
+        const date = entry.date;
+        if (!acc[date]) acc[date] = { date, sales: 0, incoming: 0, stock: 0, count: 0 };
+        acc[date].sales += entry.sold;
+        acc[date].incoming += entry.incoming;
+        acc[date].stock += entry.night_stock;
+        acc[date].count += 1;
         return acc;
-      }, {} as Record<string, number>);
+      }, {});
 
-      return Object.entries(grouped).map(([date, sales]) => ({ date, Penjualan: sales }));
+      return Object.values(groupedData).map(item => ({
+        date: new Date(item.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }),
+        Penjualan: item.sales,
+        "HP Datang": item.incoming,
+        "Rata-rata Stok": Math.round(item.stock / (item.count || 1))
+      }));
     }
   });
 
-  // 3. Query for Stock Composition Pie Chart
-  const { data: stockCompositionData, isLoading: compositionLoading } = useQuery({
-    queryKey: ['stock-composition'],
+  // Fetch brand performance data
+  const { data: brandData, isLoading: brandLoading } = useQuery({
+    queryKey: ['brand-data'],
+    queryFn: async (): Promise<BrandData[]> => {
+      // ... (omitted for brevity, same as original)
+      const { data, error } = await supabase.from('stock_entries').select(`sold, night_stock, phone_models(brand), stock_locations(name)`);
+
+      if (error) throw error;
+
+      const groupedData = (data || []).reduce((acc, entry) => {
+        const brand = entry.phone_models?.brand || 'Unknown';
+        if (!acc[brand]) acc[brand] = { brand, stok: 0, penjualan: 0 };
+        acc[brand].stok += entry.night_stock;
+        acc[brand].penjualan += entry.sold;
+        return acc;
+      }, {} as Record<string, BrandData>);
+
+      return Object.values(groupedData).sort((a, b) => b.penjualan - a.penjualan);
+    }
+  });
+
+  // Fetch low stock alerts
+  const { data: lowStockItems, isLoading: lowStockLoading } = useQuery({
+    queryKey: ['low-stock'],
     queryFn: async () => {
-        const { data, error } = await supabase.from('stock_entries').select('night_stock, phone_models(brand)').gt('night_stock', 0);
-        if (error) throw error;
+      // ... (omitted for brevity, same as original)
+      const { data, error } = await supabase
+        .from('stock_entries')
+        .select(`night_stock, phone_models(brand, model, color), stock_locations(name)`)
+        .lte('night_stock', 5)
+        .gt('night_stock', 0)
+        .order('night_stock');
 
-        const grouped = data.reduce((acc, entry) => {
-            const brand = entry.phone_models?.brand || 'Unknown';
-            acc[brand] = (acc[brand] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-
-        return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+      if (error) throw error;
+      return data || [];
     }
   });
-
-  // 4. Query for Best Selling Models Table
-  const { data: bestSellingModels, isLoading: modelsLoading } = useQuery({
-    queryKey: ['best-selling-models'],
-    queryFn: async () => {
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const { data, error } = await supabase.from('stock_entries').select('sold, phone_models(brand, model, color)').gte('date', thirtyDaysAgo.toISOString());
-        if (error) throw error;
-
-        const grouped = data.filter(e => e.sold > 0).reduce((acc, entry) => {
-            const modelName = `${entry.phone_models?.brand} ${entry.phone_models?.model} ${entry.phone_models?.color || ''}`.trim();
-            acc[modelName] = (acc[modelName] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-
-        return Object.entries(grouped).map(([name, sales]) => ({ name, sales })).sort((a, b) => b.sales - a.sales);
-    }
-  });
-
-  // --- RENDER ---
 
   const AnalyticsLoader = () => (
-    <div className="h-24 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <div className="h-80 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
     </div>
   );
 
   return (
-    <div className="space-y-6">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Terjual (Bulan Ini)</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.totalSoldMonthly ?? 0}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Tersedia</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.availableStock ?? 0}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Brand Terlaris</CardTitle>
-            <BarChart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.bestSellingBrand ?? 'N/A'}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Paling Lama</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.oldestStock ?? 'N/A'}</div>}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts and Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Grafik Penjualan Harian</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              {dailySalesLoading ? <AnalyticsLoader /> : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailySalesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis allowDecimals={false} />
-                    <RechartsTooltip />
-                    <Line type="monotone" dataKey="Penjualan" stroke="#8884d8" activeDot={{ r: 8 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Komposisi Stok</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[300px]">
-              {compositionLoading ? <AnalyticsLoader /> : (
-                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie data={stockCompositionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                            {stockCompositionData?.map((_entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <RechartsLegend />
-                    </PieChart>
-                 </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div>
-        <Card>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main Analytics Column */}
+      <div className="lg:col-span-2 space-y-6">
+        <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardHeader>
-            <CardTitle>Tipe HP Terlaris (Bulan Ini)</CardTitle>
+            <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" /> Tren 30 Hari</CardTitle>
+            <CardDescription>Tren penjualan, stok, dan HP datang dalam 30 hari terakhir.</CardDescription>
           </CardHeader>
           <CardContent>
-             {modelsLoading ? <AnalyticsLoader /> : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>No.</TableHead>
-                            <TableHead>Tipe HP</TableHead>
-                            <TableHead className="text-right">Unit Terjual</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {bestSellingModels?.map((model, index) => (
-                            <TableRow key={model.name}>
-                                <TableCell>{index + 1}</TableCell>
-                                <TableCell>{model.name}</TableCell>
-                                <TableCell className="text-right">{model.sales}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-             )}
+            {trendLoading ? <AnalyticsLoader /> : (
+              <ChartContainer config={chartConfig} className="w-full h-80">
+                <LineChart data={trendData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend verticalAlign="bottom" height={36} />
+                  <Line type="monotone" dataKey="Penjualan" stroke="var(--color-penjualan)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="HP Datang" stroke="var(--color-HP Datang)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Rata-rata Stok" stroke="var(--color-Rata-rata Stok)" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Package className="w-5 h-5" /> Performa Merk</CardTitle>
+              <CardDescription>Penjualan dan stok berdasarkan merk.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {brandLoading ? <AnalyticsLoader /> : (
+                <ChartContainer config={chartConfig} className="w-full h-64">
+                  <BarChart data={brandData?.slice(0, 5)}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="brand" tickLine={false} axisLine={false} />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend verticalAlign="bottom" height={36} />
+                    <Bar dataKey="penjualan" fill="var(--color-penjualan)" radius={4} />
+                    <Bar dataKey="stok" fill="var(--color-stok)" radius={4} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 bg-card/50 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><PieChartIcon className="w-5 h-5" /> Pangsa Pasar</CardTitle>
+              <CardDescription>Pangsa pasar merk berdasarkan penjualan.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {brandLoading ? <AnalyticsLoader /> : (
+                <ChartContainer config={chartConfig} className="w-full h-64">
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Pie data={brandData?.slice(0, 5)} dataKey="penjualan" nameKey="brand" cx="50%" cy="50%" outerRadius={80}>
+                      {brandData?.slice(0, 5).map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  </PieChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Side Column for Alerts */}
+      <div className="space-y-6">
+        <Card className="border-border/50 bg-card/50 backdrop-blur lg:sticky lg:top-20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-yellow-500" /> Stok Menipis</CardTitle>
+            <CardDescription>Daftar item dengan stok di bawah 5 unit.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {lowStockLoading ? <AnalyticsLoader /> : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {lowStockItems?.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">Tidak ada stok yang menipis.</p>
+                ) : (
+                  lowStockItems?.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                      <div>
+                        <div className="font-medium text-sm">{item.phone_models?.brand} {item.phone_models?.model}</div>
+                        <div className="text-xs text-muted-foreground">{item.phone_models?.color} • {item.stock_locations?.name}</div>
+                      </div>
+                      <div className="text-yellow-500 font-bold">{item.night_stock}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

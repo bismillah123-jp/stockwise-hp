@@ -82,8 +82,6 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
       // Create a new stock entry for each incoming IMEI.
-      // The database schema has a UNIQUE constraint on (date, location_id, phone_model_id, imei)
-      // which prevents duplicate entries for the same phone on the same day.
       const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
         .insert({
@@ -93,13 +91,11 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
           incoming: quantityNum, // This marks the item as incoming
           imei: imei.trim(),
           notes: notes || null,
-          // All other fields default to 0 in the DB
         })
         .select()
         .single();
 
       if (insertError) {
-        // Handle unique constraint violation
         if (insertError.code === '23505') {
           throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal ini.`);
         }
