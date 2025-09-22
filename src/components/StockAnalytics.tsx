@@ -49,10 +49,21 @@ export function StockAnalytics() {
       const availableStock = availableStockData?.length || 0;
 
       // Process oldest stock
-      const oldestStock = oldestStockData && oldestStockData.length > 0 ? {
-        model: oldestStockData[0].phone_models?.model || 'N/A',
-        days: differenceInDays(new Date(), new Date(oldestStockData[0].date)),
-      } : null;
+      let oldestStock = null;
+      if (oldestStockData && oldestStockData.length > 0 && oldestStockData[0].date) {
+        try {
+          const oldestDate = new Date(oldestStockData[0].date);
+          if (!isNaN(oldestDate.getTime())) { // Check if the date is valid
+            oldestStock = {
+              model: oldestStockData[0].phone_models?.model || 'N/A',
+              days: differenceInDays(new Date(), oldestDate),
+            };
+          }
+        } catch (e) {
+          // Date parsing failed, leave oldestStock as null
+          console.error("Error parsing oldest stock date:", e);
+        }
+      }
 
       return {
         totalSoldMonthly,
