@@ -81,19 +81,19 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Create a new stock entry for each IMEI.
-      // The database schema has a UNIQUE constraint on (date, location_id, phone_model_id, imei)
-      // which prevents duplicate entries for the same phone on the same day.
+      // Add Stock: Creates a new entry representing corrected morning inventory
+      // Both morning_stock and add_stock are set to represent this is a morning stock correction
       const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
         .insert({
           date: date,
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          morning_stock: quantityNum, // A new item's stock starts at 1
+          morning_stock: quantityNum, // This represents the corrected morning stock
+          add_stock: quantityNum, // This ensures night_stock is also increased via trigger
           imei: imei.trim(),
           notes: notes || null,
-          // All other fields (incoming, add_stock, sold, etc.) default to 0 in the DB
+          // Other fields default to 0 in the DB
         })
         .select()
         .single();

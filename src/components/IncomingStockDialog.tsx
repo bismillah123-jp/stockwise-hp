@@ -81,16 +81,18 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Create a new stock entry for each incoming IMEI.
+      // Incoming HP: Creates a new entry for goods that arrived during the day
+      // Only incoming is set, morning_stock stays 0 since it didn't exist in the morning
       const { data: newEntry, error: insertError } = await supabase
         .from('stock_entries')
         .insert({
           date: date,
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          incoming: quantityNum, // This marks the item as incoming
+          incoming: quantityNum, // Only affects night_stock via trigger, not morning_stock
           imei: imei.trim(),
           notes: notes || null,
+          // morning_stock stays 0 since this item wasn't present in the morning
         })
         .select()
         .single();

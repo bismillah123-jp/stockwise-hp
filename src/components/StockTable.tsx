@@ -152,9 +152,10 @@ export function StockTable({ selectedDate }: StockTableProps) {
 
   const markAsSoldMutation = useMutation({
     mutationFn: async (entry: StockEntry) => {
+      // Only update sold field, let database trigger handle night_stock calculation
       const { error } = await supabase
         .from('stock_entries')
-        .update({ sold: entry.sold + 1, night_stock: entry.night_stock - 1 })
+        .update({ sold: entry.sold + 1 })
         .eq('id', entry.id);
       if (error) throw error;
     },
@@ -240,12 +241,14 @@ export function StockTable({ selectedDate }: StockTableProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                    <TableHead>Tanggal</TableHead>
-                    <TableHead>Lokasi</TableHead>
-                    <TableHead>Merk & Model</TableHead>
-                    <TableHead>IMEI</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Aksi</TableHead>
+                     <TableHead>Tanggal</TableHead>
+                     <TableHead>Lokasi</TableHead>
+                     <TableHead>Merk & Model</TableHead>
+                     <TableHead>IMEI</TableHead>
+                     <TableHead>Stok Pagi</TableHead>
+                     <TableHead>Stok Malam</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -271,14 +274,24 @@ export function StockTable({ selectedDate }: StockTableProps) {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {entry.imei || "—"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={status.variant} className="text-xs">
-                            {status.label}
-                          </Badge>
-                        </TableCell>
+                         <TableCell className="font-mono text-xs">
+                           {entry.imei || "—"}
+                         </TableCell>
+                         <TableCell className="text-center">
+                           <Badge variant="secondary" className="text-xs">
+                             {entry.morning_stock}
+                           </Badge>
+                         </TableCell>
+                         <TableCell className="text-center">
+                           <Badge variant="outline" className="text-xs">
+                             {entry.night_stock}
+                           </Badge>
+                         </TableCell>
+                         <TableCell>
+                           <Badge variant={status.variant} className="text-xs">
+                             {status.label}
+                           </Badge>
+                         </TableCell>
                         <TableCell className="flex items-center gap-1">
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMarkAsSoldClick(entry)} disabled={entry.night_stock === 0}>
                             <CheckCircle className="h-4 w-4 text-green-500" />
