@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -6,21 +6,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { StockEntry } from "./StockTable";
+import { StockUnit } from "./StockTable";
+import { format } from "date-fns";
 
 interface TransferStockDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  stockEntry: StockEntry | null;
+  stockUnit: StockUnit | null;
+  selectedDate: Date;
 }
 
-export function TransferStockDialog({ open, onOpenChange, stockEntry }: TransferStockDialogProps) {
+export function TransferStockDialog({ open, onOpenChange, stockUnit, selectedDate }: TransferStockDialogProps) {
   const [destinationLocationId, setDestinationLocationId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: locations } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ['stock_locations'],
     queryFn: async () => {
       const { data, error } = await supabase.from('stock_locations').select('*').order('name');
       if (error) throw error;
@@ -30,72 +32,21 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
 
   const transferStockMutation = useMutation({
     mutationFn: async (destinationId: string) => {
-      if (!stockEntry) throw new Error("No stock entry selected for transfer.");
+      if (!stockUnit) throw new Error("No stock unit selected for transfer.");
       if (!destinationId) throw new Error("Please select a destination location.");
 
-      const transferQty = 1;
-      const sourceLocationName = stockEntry.stock_locations.name;
-      const destLocation = locations?.find(l => l.id === destinationId);
-      if (!destLocation) throw new Error("Destination location not found.");
-      const destLocationName = destLocation.name;
+      const { error } = await supabase.rpc('transfer_stock_unit', {
+        p_imei: stockUnit.imei,
+        p_new_location_id: destinationId,
+        p_transfer_date: format(selectedDate, 'yyyy-MM-dd'),
+        p_notes: `Transferred from ${stockUnit.stock_locations.name}`
+      });
 
-      // 1. Update source entry with a negative adjustment
-      const { error: updateSourceError } = await supabase
-        .from('stock_entries')
-        .update({
-          adjustment: stockEntry.adjustment - transferQty,
-          notes: `${stockEntry.notes || ''} | Transfer Out to ${destLocationName}`.trim(),
-        })
-        .eq('id', stockEntry.id);
-
-      if (updateSourceError) throw new Error(`Failed to update source stock: ${updateSourceError.message}`);
-
-      // 2. Find or create entry at destination for the same date and model
-      const { data: destEntry, error: findDestError } = await supabase
-        .from('stock_entries')
-        .select('id, adjustment')
-        .eq('date', stockEntry.date)
-        .eq('location_id', destinationId)
-        .eq('phone_model_id', stockEntry.phone_models.id)
-        .maybeSingle();
-
-      if (findDestError) throw new Error(`Failed to find destination stock: ${findDestError.message}`);
-
-      if (destEntry) {
-        // 2a. Update existing destination entry
-        const { error: updateDestError } = await supabase
-          .from('stock_entries')
-          .update({
-            adjustment: destEntry.adjustment + transferQty,
-            notes: `Transfer In from ${sourceLocationName}`,
-          })
-          .eq('id', destEntry.id);
-        if (updateDestError) throw new Error(`Failed to update destination stock: ${updateDestError.message}`);
-      } else {
-        // 2b. Create new destination entry
-        const { error: createDestError } = await supabase
-          .from('stock_entries')
-          .insert({
-            date: stockEntry.date,
-            location_id: destinationId,
-            phone_model_id: stockEntry.phone_models.id,
-            imei: stockEntry.imei, // Transfer the IMEI
-            adjustment: transferQty,
-            notes: `Transfer In from ${sourceLocationName}`,
-            // Set other fields to 0 as it's a new entry for this day
-            morning_stock: 0,
-            incoming: 0,
-            add_stock: 0,
-            returns: 0,
-            sold: 0,
-          });
-        if (createDestError) throw new Error(`Failed to create destination stock: ${createDestError.message}`);
-      }
+      if (error) throw new Error(`Failed to transfer stock: ${error.message}`);
     },
     onSuccess: () => {
       toast({ title: "Sukses", description: "Stok berhasil ditransfer." });
-      queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] }); // Invalidate dashboard too
+      queryClient.invalidateQueries({ queryKey: ['stock-units'] });
       onOpenChange(false);
     },
     onError: (error: Error) => {
@@ -107,7 +58,7 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
     transferStockMutation.mutate(destinationLocationId);
   };
 
-  const availableLocations = locations?.filter(loc => loc.id !== stockEntry?.stock_locations.id);
+  const availableLocations = locations?.filter(loc => loc.id !== stockUnit?.location_id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -115,14 +66,14 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
         <DialogHeader>
           <DialogTitle>Transfer Stok</DialogTitle>
           <DialogDescription>
-            Transfer item ke lokasi lain.
+            Transfer item ke lokasi lain pada tanggal {format(selectedDate, 'dd MMM yyyy')}.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <p className="font-medium">{stockEntry?.phone_models.brand} {stockEntry?.phone_models.model}</p>
-            <p className="text-sm text-muted-foreground">IMEI: {stockEntry?.imei}</p>
-            <p className="text-sm text-muted-foreground">Dari: {stockEntry?.stock_locations.name}</p>
+            <p className="font-medium">{stockUnit?.phone_models.brands.name} {stockUnit?.phone_models.model}</p>
+            <p className="text-sm text-muted-foreground">IMEI: {stockUnit?.imei}</p>
+            <p className="text-sm text-muted-foreground">Dari: {stockUnit?.stock_locations.name}</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="destination">Transfer Ke</Label>

@@ -26,6 +26,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2 } from 'lucide-react';
+import { Tables } from '@/integrations/supabase/types';
+
+type Brand = Tables<'brands'>;
 
 interface ManageBrandsDialogProps {
   open: boolean;
@@ -37,67 +40,69 @@ export function ManageBrandsDialog({ open, onOpenChange }: ManageBrandsDialogPro
   const { toast } = useToast();
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingBrand, setEditingBrand] = useState('');
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
   const [newBrandName, setNewBrandName] = useState('');
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingBrand, setDeletingBrand] = useState('');
+  const [deletingBrand, setDeletingBrand] = useState<Brand | null>(null);
 
   const { data: brands, isLoading: brandsLoading } = useQuery({
     queryKey: ['brands'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('phone_models').select('brand').order('brand');
+      const { data, error } = await supabase.rpc('get_brands');
       if (error) throw error;
-      return [...new Set(data.map((item) => item.brand))];
+      return data;
     },
   });
 
   const editBrandMutation = useMutation({
-    mutationFn: async ({ oldName, newName }: { oldName: string, newName: string }) => {
-        const { error } = await supabase.rpc('update_brand_name', { old_name: oldName, new_name: newName });
+    mutationFn: async ({ id, newName }: { id: string, newName: string }) => {
+        const { error } = await supabase.from('brands').update({ name: newName.toUpperCase() }).eq('id', id);
         if (error) throw error;
     },
     onSuccess: () => {
         toast({ title: 'Merk berhasil diperbarui' });
         queryClient.invalidateQueries({ queryKey: ['brands'] });
-        queryClient.invalidateQueries({ queryKey: ['phone-models'] });
+        queryClient.invalidateQueries({ queryKey: ['phone_models'] });
         setIsEditDialogOpen(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
 
   const handleEditBrand = () => {
-    if (!newBrandName.trim()) {
+    if (!editingBrand || !newBrandName.trim()) {
         toast({ title: 'Error', description: 'Nama merk tidak boleh kosong.', variant: 'destructive' });
         return;
     }
-    if (newBrandName.trim().toUpperCase() === editingBrand.toUpperCase()) {
+    if (newBrandName.trim().toUpperCase() === editingBrand.name.toUpperCase()) {
         setIsEditDialogOpen(false);
         return;
     }
-    editBrandMutation.mutate({ oldName: editingBrand, newName: newBrandName.trim().toUpperCase() });
+    editBrandMutation.mutate({ id: editingBrand.id, newName: newBrandName.trim() });
   }
 
   const deleteBrandMutation = useMutation({
-    mutationFn: async (brandName: string) => {
-        const { error } = await supabase.rpc('delete_brand', { brand_name: brandName });
+    mutationFn: async (brandId: string) => {
+        const { error } = await supabase.from('brands').delete().eq('id', brandId);
         if (error) throw error;
     },
-    onSuccess: (_, brandName) => {
-        toast({ title: `Merk "${brandName}" berhasil dihapus` });
+    onSuccess: (_, brandId) => {
+        const deletedBrandName = brands?.find(b => b.id === brandId)?.name;
+        toast({ title: `Merk "${deletedBrandName || 'yang dipilih'}" berhasil dihapus` });
         queryClient.invalidateQueries({ queryKey: ['brands'] });
-        queryClient.invalidateQueries({ queryKey: ['phone-models'] });
+        queryClient.invalidateQueries({ queryKey: ['phone_models'] });
         setIsDeleteDialogOpen(false);
     },
-    onError: (error: any) => {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    onError: (error: Error) => {
+        toast({ title: 'Error', description: "Gagal menghapus merk. Pastikan tidak ada model HP yang terkait dengan merk ini. " + error.message, variant: 'destructive' });
     },
   });
 
   const handleDeleteBrand = () => {
-    deleteBrandMutation.mutate(deletingBrand);
+    if (!deletingBrand) return;
+    deleteBrandMutation.mutate(deletingBrand.id);
   }
 
   return (
@@ -117,12 +122,12 @@ export function ManageBrandsDialog({ open, onOpenChange }: ManageBrandsDialogPro
               ) : (
                   <ul className="space-y-2">
                       {brands?.map((brand) => (
-                          <li key={brand} className="flex justify-between items-center p-2 border rounded-md">
-                              <span className="font-medium">{brand}</span>
+                          <li key={brand.id} className="flex justify-between items-center p-2 border rounded-md">
+                              <span className="font-medium">{brand.name}</span>
                               <div className="space-x-2">
                                   <Button variant="ghost" size="icon" onClick={() => {
                                       setEditingBrand(brand);
-                                      setNewBrandName(brand);
+                                      setNewBrandName(brand.name);
                                       setIsEditDialogOpen(true);
                                   }}>
                                       <Pencil className="h-4 w-4" />
@@ -176,7 +181,7 @@ export function ManageBrandsDialog({ open, onOpenChange }: ManageBrandsDialogPro
                 <AlertDialogTitle>Anda yakin ingin menghapus merk ini?</AlertDialogTitle>
                 <AlertDialogDescription>
                     Tindakan ini tidak dapat diurungkan. Ini akan menghapus merk secara permanen
-                    dan semua model HP terkait dari database.
+                    jika tidak ada model HP yang terkait.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

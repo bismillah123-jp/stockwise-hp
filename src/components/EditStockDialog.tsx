@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,44 +7,51 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { StockEntry } from "./StockTable"; // Assuming StockEntry is exported from StockTable
+import { StockUnit } from "./StockTable";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface EditStockDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  stockEntry: StockEntry | null;
+  stockUnit: StockUnit | null;
 }
 
-export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDialogProps) {
+export function EditStockDialog({ open, onOpenChange, stockUnit }: EditStockDialogProps) {
   const [notes, setNotes] = useState("");
   const [imei, setImei] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (stockEntry) {
-      setNotes(stockEntry.notes || "");
-      setImei(stockEntry.imei || "");
+    if (stockUnit) {
+      setNotes(stockUnit.notes || "");
+      setImei(stockUnit.imei || "");
     }
-  }, [stockEntry]);
+  }, [stockUnit]);
 
   const editStockMutation = useMutation({
     mutationFn: async ({ notes, imei }: { notes: string; imei: string }) => {
-      if (!stockEntry) throw new Error("No stock entry selected for editing.");
+      if (!stockUnit) throw new Error("No stock unit selected for editing.");
 
       const { error } = await supabase
-        .from('stock_entries')
-        .update({ notes, imei })
-        .eq('id', stockEntry.id);
+        .from('stock_units')
+        .update({ notes, imei: imei.trim() })
+        .eq('id', stockUnit.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error(`Gagal: IMEI ${imei.trim()} sudah ada di sistem.`);
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
         title: "Berhasil",
-        description: "Stok berhasil diperbarui",
+        description: "Unit stok berhasil diperbarui",
       });
-      queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-units'] });
       onOpenChange(false);
     },
     onError: (error: Error) => {
@@ -57,6 +64,10 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
   });
 
   const handleSubmit = () => {
+    if (!imei.trim()) {
+      toast({ title: "Error", description: "IMEI tidak boleh kosong.", variant: "destructive" });
+      return;
+    }
     editStockMutation.mutate({ notes, imei });
   };
 
@@ -64,9 +75,9 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit Stok</DialogTitle>
+          <DialogTitle>Edit Unit Stok</DialogTitle>
           <DialogDescription>
-            Perbarui detail untuk entri stok yang dipilih.
+            Perbarui detail untuk unit stok yang dipilih.
           </DialogDescription>
         </DialogHeader>
 
@@ -75,7 +86,7 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
             <Label>Model HP</Label>
             <Input
               disabled
-              value={stockEntry ? `${stockEntry.phone_models.brand} ${stockEntry.phone_models.model}` : ""}
+              value={stockUnit ? `${stockUnit.phone_models.brands.name} ${stockUnit.phone_models.model}` : ""}
             />
           </div>
           <div className="space-y-2">
@@ -86,6 +97,13 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
               onChange={(e) => setImei(e.target.value)}
             />
           </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Perhatian</AlertTitle>
+            <AlertDescription>
+              Mengubah IMEI adalah tindakan berisiko dan dapat memengaruhi pelacakan riwayat unit. Lakukan dengan hati-hati.
+            </AlertDescription>
+          </Alert>
           <div className="space-y-2">
             <Label>Catatan</Label>
             <Textarea

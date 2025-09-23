@@ -30,33 +30,24 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch locations
   const { data: locations } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ['stock_locations'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('stock_locations')
-        .select('*')
-        .order('name');
+      const { data, error } = await supabase.from('stock_locations').select('*').order('name');
       if (error) throw error;
       return data;
     }
   });
 
-  // Fetch brands
   const { data: brands } = useQuery({
     queryKey: ['brands'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('phone_models')
-        .select('brand')
-        .order('brand');
+      const { data, error } = await supabase.rpc('get_brands');
       if (error) throw error;
-      return [...new Set(data.map(item => item.brand))];
+      return data;
     }
   });
 
-  // Fetch models based on selected brand
   const { data: phoneModels } = useQuery({
     queryKey: ['phone-models', selectedBrand],
     queryFn: async () => {
@@ -64,7 +55,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const { data, error } = await supabase
         .from('phone_models')
         .select('*')
-        .eq('brand', selectedBrand)
+        .eq('brand_id', selectedBrand)
         .order('model');
       if (error) throw error;
       return data;
@@ -78,45 +69,19 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
         throw new Error('Lokasi, Model HP, dan IMEI wajib diisi');
       }
 
-      const date = format(selectedDate, "yyyy-MM-dd");
-      const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
+      const { error } = await supabase.rpc('add_stock_unit', {
+        p_imei: imei.trim(),
+        p_phone_model_id: selectedModel,
+        p_location_id: selectedLocation,
+        p_entry_date: format(selectedDate, "yyyy-MM-dd"),
+        p_notes: notes || ''
+      });
 
-      // Add Stock: Corrects morning stock - both morning_stock and night_stock should be the same after correction
-      // This represents a correction to the initial morning inventory
-      const { data: newEntry, error: insertError } = await supabase
-        .from('stock_entries')
-        .insert({
-          date: date,
-          location_id: selectedLocation,
-          phone_model_id: selectedModel,
-          morning_stock: quantityNum, // Set the corrected morning stock
-          imei: imei.trim(),
-          notes: notes || null,
-          // All other fields remain 0, so night_stock = morning_stock (1) via trigger
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        // Handle unique constraint violation for IMEI
-        if (insertError.code === '23505') {
-          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal dan model ini.`);
+      if (error) {
+        if (error.code === '23505') { // unique_violation on imei
+          throw new Error(`Gagal: IMEI ${imei.trim()} sudah ada di dalam sistem.`);
         }
-        throw new Error(`Gagal menambahkan stok: ${insertError.message}`);
-      }
-
-      // Log the transaction if the new entry was created successfully
-      if (newEntry) {
-        await supabase
-          .from('stock_transactions_log')
-          .insert({
-            stock_entry_id: newEntry.id,
-            transaction_type: 'add_stock',
-            quantity: quantityNum,
-            previous_night_stock: 0, // It's a new corrected morning stock entry
-            new_night_stock: newEntry.night_stock, // Should equal morning_stock after correction
-            notes: `Koreksi stok pagi: ${notes || 'Tanpa catatan'}`
-          });
+        throw new Error(`Gagal menambahkan stok: ${error.message}`);
       }
     },
     onSuccess: () => {
@@ -124,8 +89,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
         title: "Berhasil",
         description: "Stok berhasil ditambahkan",
       });
-      queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-units'] });
       onOpenChange(false);
       // Reset form
       setSelectedLocation("");
@@ -135,7 +99,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       setNotes("");
       setImei("");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Gagal",
         description: error.message,
@@ -150,13 +114,13 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
         <DialogHeader>
           <DialogTitle>Tambah Stok</DialogTitle>
           <DialogDescription>
-            Tambah stok untuk tanggal yang dipilih.
+            Tambah unit stok baru ke dalam inventori.
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Tanggal</Label>
+            <Label>Tanggal Masuk</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -175,7 +139,6 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
                   mode="single"
                   selected={selectedDate}
                   onSelect={(d) => d && setSelectedDate(d)}
-                  disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                   initialFocus
                 />
               </PopoverContent>
@@ -205,8 +168,8 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 {brands?.map(brand => (
-                  <SelectItem key={brand} value={brand}>
-                    {brand}
+                  <SelectItem key={brand.id} value={brand.id}>
+                    {brand.name}
                   </SelectItem>
                 ))}
               </SelectContent>
