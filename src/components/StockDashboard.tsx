@@ -45,11 +45,20 @@ export function StockDashboard() {
   const [date, setDate] = useState<Date>(new Date());
   const { toast } = useToast();
 
-  // Fetch dashboard statistics
+  // Fetch dashboard statistics with automatic rollover check
   const { data: stats, isLoading: statsLoading, refetch } = useQuery({
     queryKey: ['dashboard-stats', date],
     queryFn: async (): Promise<DashboardStats> => {
       const selectedDate = format(date, "yyyy-MM-dd");
+      
+      // Check and perform automatic rollover if needed (only for current date)
+      if (selectedDate === format(new Date(), "yyyy-MM-dd")) {
+        try {
+          await supabase.rpc('check_and_rollover_if_needed' as any);
+        } catch (error) {
+          console.log('Rollover check error (non-critical):', error);
+        }
+      }
       
       const { data, error } = await supabase
         .from('stock_entries')
@@ -93,9 +102,9 @@ export function StockDashboard() {
         totalSold,
         totalIncoming,
         totalTransfers,
-        totalFinalStock,
-        breakdown,
-        transferBreakdown: { toSoko, toMbutoh },
+        totalFinalStock: totalFinalStock,
+        breakdown: breakdown,
+        transferBreakdown: { toSoko, toMbutoh }
       };
     }
   });

@@ -418,8 +418,16 @@ export type Database = {
         }
         Returns: number
       }
+      check_and_rollover_if_needed: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       delete_stock_entry_and_logs: {
         Args: { entry_id: string }
+        Returns: undefined
+      }
+      rollover_to_new_day: {
+        Args: { target_date: string }
         Returns: undefined
       }
     }
