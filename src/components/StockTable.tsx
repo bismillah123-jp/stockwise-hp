@@ -243,7 +243,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
                   <TableRow className="bg-muted/30">
                      <TableHead>Tanggal</TableHead>
                      <TableHead>Lokasi</TableHead>
-                     <TableHead>Merk & Model</TableHead>
+                     <TableHead>Tipe</TableHead>
                      <TableHead>IMEI</TableHead>
                      <TableHead>Stok Pagi</TableHead>
                      <TableHead>Stok Malam</TableHead>
