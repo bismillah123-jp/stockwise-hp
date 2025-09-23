@@ -15,6 +15,7 @@ createRoot(document.getElementById('root')!).render(
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <App />
