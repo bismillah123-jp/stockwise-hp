@@ -20,8 +20,8 @@ const Login = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
         toast({
-          title: "Berhasil masuk",
-          description: "Anda berhasil masuk ke sistem.",
+          title: "Login Berhasil",
+          description: "Selamat Datang Sir.",
         });
         navigate("/");
       }
@@ -52,7 +52,7 @@ const Login = () => {
     } catch (error) {
       toast({
         title: "Terjadi kesalahan",
-        description: "Silakan coba lagi nanti.",
+        description: "Silakan coba lagi nanti. Kalo masalah teruss berlanjut silahkan hubungi Sir Ihsan!",
         variant: "destructive",
       });
     } finally {
@@ -67,9 +67,9 @@ const Login = () => {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Smartphone className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Manajemen Stok</CardTitle>
+          <CardTitle className="text-2xl font-bold">Indah Cell</CardTitle>
           <CardDescription>
-            Kelola inventori HP Anda dengan mudah
+            Pusat Gadget Termurah
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -79,7 +79,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="nama@email.com"
+                placeholder="emailkamu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -114,7 +114,7 @@ const Login = () => {
             </div>
             
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Tunggu..." : "Masuk"}
+              {isLoading ? "Memverifikasi..." : "Login"}
             </Button>
           </form>
         </CardContent>
