@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Truck, Smartphone, MapPin } from 'lucide-react';
+import { Plus, Truck, Smartphone, MapPin, Tags } from 'lucide-react';
 import { useState } from 'react';
 import { AddStockDialog } from './AddStockDialog';
 import { IncomingStockDialog } from './IncomingStockDialog';
 import { AddPhoneModelDialog } from './AddPhoneModelDialog';
+import { ManageBrandsDialog } from './ManageBrandsDialog';
 import { AddLocationDialog } from './AddLocationDialog';
 
 export function FabMenu() {
@@ -31,6 +32,11 @@ export function FabMenu() {
       label: 'Tambah Model HP',
       icon: Smartphone,
       dialog: 'addPhoneModel',
+    },
+    {
+      label: 'Kelola Merk',
+      icon: Tags,
+      dialog: 'manageBrands',
     },
     {
       label: 'Tambah Lokasi',
@@ -69,6 +75,7 @@ export function FabMenu() {
       {dialog === 'addStock' && <AddStockDialog open={true} onOpenChange={() => setDialog(null)} />}
       {dialog === 'incomingStock' && <IncomingStockDialog open={true} onOpenChange={() => setDialog(null)} />}
       {dialog === 'addPhoneModel' && <AddPhoneModelDialog open={true} onOpenChange={() => setDialog(null)} />}
+      {dialog === 'manageBrands' && <ManageBrandsDialog open={true} onOpenChange={() => setDialog(null)} />}
       {dialog === 'addLocation' && <AddLocationDialog open={true} onOpenChange={() => setDialog(null)} />}
     </>
   );
