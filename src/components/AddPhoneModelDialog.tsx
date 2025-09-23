@@ -7,25 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-  DialogClose
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
     Popover,
     PopoverContent,
@@ -43,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Pencil, Trash2, ChevronsUpDown } from 'lucide-react';
+import { ChevronsUpDown } from 'lucide-react';
 
 interface AddPhoneModelDialogProps {
   open: boolean;
@@ -55,13 +37,6 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
   const [selectedBrand, setSelectedBrand] = useState('');
   const [newBrand, setNewBrand] = useState('');
   const [isAddingBrand, setIsAddingBrand] = useState(false);
-
-  const [isEditBrandDialogOpen, setIsEditBrandDialogOpen] = useState(false);
-  const [editingBrand, setEditingBrand] = useState('');
-  const [newBrandName, setNewBrandName] = useState('');
-
-  const [isDeleteBrandDialogOpen, setIsDeleteBrandDialogOpen] = useState(false);
-  const [deletingBrand, setDeletingBrand] = useState('');
 
   const [brandSearch, setBrandSearch] = useState('');
   const [isBrandPopoverOpen, setIsBrandPopoverOpen] = useState(false);
@@ -98,11 +73,20 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBrand) {
-      toast({ title: 'Error', description: 'Silakan pilih merk.', variant: 'destructive' });
+    let finalBrand = selectedBrand;
+    if (isAddingBrand) {
+        if (!newBrand.trim()) {
+            toast({ title: 'Error', description: 'Nama merk tidak boleh kosong.', variant: 'destructive' });
+            return;
+        }
+        finalBrand = newBrand.trim().toUpperCase();
+    }
+
+    if (!finalBrand) {
+      toast({ title: 'Error', description: 'Silakan pilih atau tambah merk.', variant: 'destructive' });
       return;
     }
-    addModelMutation.mutate({ ...formData, brand: selectedBrand });
+    addModelMutation.mutate({ ...formData, brand: finalBrand });
   };
 
   const resetForm = () => {
@@ -123,232 +107,95 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
     setIsBrandPopoverOpen(false);
   }
 
-  const handleAddNewBrand = () => {
-    if (!newBrand.trim()) {
-        toast({ title: 'Error', description: 'Nama merk tidak boleh kosong.', variant: 'destructive' });
-        return;
-    }
-    setSelectedBrand(newBrand.trim().toUpperCase());
-    setIsAddingBrand(false);
-    setNewBrand('');
-  }
-
   const filteredBrands = useMemo(() => {
     if (!brands) return [];
     return brands.filter(brand => brand.toLowerCase().includes(brandSearch.toLowerCase()));
   }, [brands, brandSearch]);
 
-  const editBrandMutation = useMutation({
-    mutationFn: async ({ oldName, newName }: { oldName: string, newName: string }) => {
-        const { error } = await supabase.rpc('update_brand_name', { old_name: oldName, new_name: newName });
-        if (error) throw error;
-    },
-    onSuccess: (_, variables) => {
-        toast({ title: 'Merk berhasil diperbarui' });
-        queryClient.invalidateQueries({ queryKey: ['brands'] });
-        queryClient.invalidateQueries({ queryKey: ['phone-models'] }); // Also invalidate models if brand name changes
-        if (selectedBrand === variables.oldName) {
-            setSelectedBrand(variables.newName);
-        }
-        setIsEditBrandDialogOpen(false);
-    },
-    onError: (error: any) => {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const handleEditBrand = () => {
-    if (!newBrandName.trim()) {
-        toast({ title: 'Error', description: 'Nama merk tidak boleh kosong.', variant: 'destructive' });
-        return;
-    }
-    if (newBrandName.trim().toUpperCase() === editingBrand.toUpperCase()) {
-        setIsEditBrandDialogOpen(false);
-        return;
-    }
-    editBrandMutation.mutate({ oldName: editingBrand, newName: newBrandName.trim().toUpperCase() });
-  }
-
-  const deleteBrandMutation = useMutation({
-    mutationFn: async (brandName: string) => {
-        const { error } = await supabase.rpc('delete_brand', { brand_name: brandName });
-        if (error) throw error;
-    },
-    onSuccess: (_, brandName) => {
-        toast({ title: `Merk "${brandName}" berhasil dihapus` });
-        queryClient.invalidateQueries({ queryKey: ['brands'] });
-        queryClient.invalidateQueries({ queryKey: ['phone-models'] });
-        if (selectedBrand === brandName) {
-            setSelectedBrand('');
-        }
-        setIsDeleteBrandDialogOpen(false);
-    },
-    onError: (error: any) => {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  const handleDeleteBrand = () => {
-    deleteBrandMutation.mutate(deletingBrand);
-  }
-
   return (
-    <>
-      <Dialog open={open} onOpenChange={(isOpen) => {
-        if (!isOpen) resetForm();
-        onOpenChange(isOpen);
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Tambah Model HP Baru</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="space-y-2">
-                <Label htmlFor="brand">Merk</Label>
-                {isAddingBrand ? (
-                    <div className="flex items-center space-x-2">
-                        <Input
-                            value={newBrand}
-                            onChange={(e) => setNewBrand(e.target.value)}
-                            placeholder="cth: VIVO"
-                            autoFocus
-                        />
-                        <Button type="button" onClick={handleAddNewBrand}>Simpan</Button>
-                        <Button type="button" variant="ghost" onClick={() => setIsAddingBrand(false)}>Batal</Button>
-                    </div>
-                ) : (
-                    <Popover open={isBrandPopoverOpen} onOpenChange={setIsBrandPopoverOpen}>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={isBrandPopoverOpen}
-                            className="w-full justify-between"
-                        >
-                            {selectedBrand || "Pilih merk..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Cari merk..." value={brandSearch} onValueChange={setBrandSearch} />
-                                <CommandList>
-                                    <CommandEmpty>Merk tidak ditemukan.</CommandEmpty>
-                                    <CommandGroup>
-                                        {filteredBrands.map((brand) => (
-                                        <CommandItem
-                                            key={brand}
-                                            value={brand}
-                                            className="flex justify-between items-center"
-                                            onSelect={(e) => e.preventDefault()} // Prevent default selection behavior
-                                        >
-                                            <div className="flex-grow" onClick={() => handleBrandSelection(brand)}>
-                                              {brand}
-                                            </div>
-                                            <DropdownMenu onOpenChange={(open) => open && setIsBrandPopoverOpen(false)}>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="shrink-0">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => {
-                                                        setIsEditBrandDialogOpen(true);
-                                                        setEditingBrand(brand);
-                                                        setNewBrandName(brand);
-                                                    }}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => {
-                                                        setIsDeleteBrandDialogOpen(true);
-                                                        setDeletingBrand(brand);
-                                                    }}>
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Hapus
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </CommandItem>
-                                        ))}
-                                        <CommandItem
-                                            key="add_new_brand"
-                                            value="add_new_brand"
-                                            onSelect={() => handleBrandSelection('add_new_brand')}
-                                            className="font-bold text-primary"
-                                        >
-                                            Tambah Merk Baru...
-                                        </CommandItem>
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                )}
-            </div>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) resetForm();
+      onOpenChange(isOpen);
+    }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Tambah Model HP Baru</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+              <Label htmlFor="brand">Merk</Label>
+              {isAddingBrand ? (
+                  <div className="flex items-center space-x-2">
+                      <Input
+                          value={newBrand}
+                          onChange={(e) => setNewBrand(e.target.value)}
+                          placeholder="cth: VIVO"
+                          autoFocus
+                      />
+                      <Button type="button" variant="ghost" onClick={() => {
+                          setIsAddingBrand(false);
+                          setNewBrand('');
+                      }}>Batal</Button>
+                  </div>
+              ) : (
+                  <Popover open={isBrandPopoverOpen} onOpenChange={setIsBrandPopoverOpen}>
+                      <PopoverTrigger asChild>
+                      <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isBrandPopoverOpen}
+                          className="w-full justify-between"
+                      >
+                          {selectedBrand || "Pilih merk..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                              <CommandInput placeholder="Cari merk..." value={brandSearch} onValueChange={setBrandSearch} />
+                              <CommandList>
+                                  <CommandEmpty>Merk tidak ditemukan.</CommandEmpty>
+                                  <CommandGroup>
+                                      {filteredBrands.map((brand) => (
+                                      <CommandItem
+                                          key={brand}
+                                          value={brand}
+                                          onSelect={() => handleBrandSelection(brand)}
+                                      >
+                                          {brand}
+                                      </CommandItem>
+                                      ))}
+                                      <CommandItem
+                                          key="add_new_brand"
+                                          value="add_new_brand"
+                                          onSelect={() => handleBrandSelection('add_new_brand')}
+                                          className="font-bold text-primary"
+                                      >
+                                          Tambah Merk Baru...
+                                      </CommandItem>
+                                  </CommandGroup>
+                              </CommandList>
+                          </Command>
+                      </PopoverContent>
+                  </Popover>
+              )}
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="model">Model</Label>
-              <Input id="model" value={formData.model} onChange={(e) => setFormData({...formData, model: e.target.value})} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="storage_capacity">Kapasitas Penyimpanan</Label>
-              <Input id="storage_capacity" value={formData.storage_capacity} onChange={(e) => setFormData({...formData, storage_capacity: e.target.value})} />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={addModelMutation.isPending}>
-                Simpan
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Brand Dialog */}
-      <Dialog open={isEditBrandDialogOpen} onOpenChange={setIsEditBrandDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Edit Merk</DialogTitle>
-                <DialogDescription>
-                    Mengubah nama merk akan diperbarui untuk semua model terkait.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-2">
-                <Label htmlFor="edit-brand-name">Nama Merk</Label>
-                <Input
-                    id="edit-brand-name"
-                    value={newBrandName}
-                    onChange={(e) => setNewBrandName(e.target.value)}
-                    autoFocus
-                />
-            </div>
-            <DialogFooter>
-                <DialogClose asChild><Button variant="ghost">Batal</Button></DialogClose>
-                <Button onClick={handleEditBrand} disabled={editBrandMutation.isPending}>
-                    {editBrandMutation.isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Brand Alert Dialog */}
-      <AlertDialog open={isDeleteBrandDialogOpen} onOpenChange={setIsDeleteBrandDialogOpen}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Anda yakin ingin menghapus merk ini?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Tindakan ini tidak dapat diurungkan. Ini akan menghapus merk secara permanen
-                    dan semua model HP terkait dari database.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteBrand} disabled={deleteBrandMutation.isPending}>
-                    {deleteBrandMutation.isPending ? 'Menghapus...' : 'Ya, Hapus'}
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+          <div className="space-y-2">
+            <Label htmlFor="model">Model</Label>
+            <Input id="model" value={formData.model} onChange={(e) => setFormData({...formData, model: e.target.value})} required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="storage_capacity">Kapasitas Penyimpanan</Label>
+            <Input id="storage_capacity" value={formData.storage_capacity} onChange={(e) => setFormData({...formData, storage_capacity: e.target.value})} />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={addModelMutation.isPending}>
+              Simpan
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
