@@ -239,18 +239,20 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
                                         <CommandItem
                                             key={brand}
                                             value={brand}
-                                            onSelect={() => handleBrandSelection(brand)}
                                             className="flex justify-between items-center"
+                                            onSelect={(e) => e.preventDefault()} // Prevent default selection behavior
                                         >
-                                            <span>{brand}</span>
+                                            <div className="flex-grow" onClick={() => handleBrandSelection(brand)}>
+                                              {brand}
+                                            </div>
                                             <DropdownMenu onOpenChange={(open) => open && setIsBrandPopoverOpen(false)}>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                                    <Button variant="ghost" size="icon" className="shrink-0">
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent>
-                                                    <DropdownMenuItem onSelect={() => {
+                                                    <DropdownMenuItem onClick={() => {
                                                         setIsEditBrandDialogOpen(true);
                                                         setEditingBrand(brand);
                                                         setNewBrandName(brand);
@@ -258,7 +260,7 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
                                                         <Pencil className="mr-2 h-4 w-4" />
                                                         Edit
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => {
+                                                    <DropdownMenuItem onClick={() => {
                                                         setIsDeleteBrandDialogOpen(true);
                                                         setDeletingBrand(brand);
                                                     }}>
