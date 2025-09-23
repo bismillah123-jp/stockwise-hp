@@ -245,8 +245,8 @@ export function StockTable({ selectedDate }: StockTableProps) {
                      <TableHead>Lokasi</TableHead>
                      <TableHead>Tipe</TableHead>
                      <TableHead>IMEI</TableHead>
-                     <TableHead>Stok Pagi</TableHead>
-                     <TableHead>Stok Malam</TableHead>
+                     <TableHead>Awal</TableHead>
+                     <TableHead>Akhir</TableHead>
                      <TableHead>Status</TableHead>
                      <TableHead>Aksi</TableHead>
                   </TableRow>
