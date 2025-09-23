@@ -130,9 +130,9 @@ export function StockDashboard() {
         <div className="container mx-auto px-4 lg:px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold truncate">Manajemen Stok</h1>
+              <h1 className="text-xl font-bold truncate">Indah Cell</h1>
               <p className="text-sm text-muted-foreground truncate">
-                Rekap Harian untuk {format(date, "d MMMM yyyy", { locale: id })}
+                Pusat Gadget Termurah
               </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
