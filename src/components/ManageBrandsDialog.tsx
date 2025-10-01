@@ -54,7 +54,7 @@ export function ManageBrandsDialog({ open, onOpenChange }: ManageBrandsDialogPro
 
   const editBrandMutation = useMutation({
     mutationFn: async ({ oldName, newName }: { oldName: string, newName: string }) => {
-        const { error } = await supabase.rpc('update_brand_name', { old_name: oldName, new_name: newName });
+        const { error } = await supabase.rpc('update_brand_name', { old_brand_name: oldName, new_brand_name: newName });
         if (error) throw error;
     },
     onSuccess: () => {

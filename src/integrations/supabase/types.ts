@@ -422,12 +422,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      delete_brand: {
+        Args: { brand_name: string }
+        Returns: undefined
+      }
       delete_stock_entry_and_logs: {
         Args: { entry_id: string }
         Returns: undefined
       }
       rollover_to_new_day: {
         Args: { target_date: string }
+        Returns: undefined
+      }
+      update_brand_name: {
+        Args: { new_brand_name: string; old_brand_name: string }
         Returns: undefined
       }
     }
