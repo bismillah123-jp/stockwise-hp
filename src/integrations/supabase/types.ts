@@ -430,6 +430,10 @@ export type Database = {
         Args: { entry_id: string }
         Returns: undefined
       }
+      reset_all_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       rollover_to_new_day: {
         Args: { target_date: string }
         Returns: undefined
