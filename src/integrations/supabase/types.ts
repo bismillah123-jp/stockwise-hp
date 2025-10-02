@@ -128,6 +128,7 @@ export type Database = {
           created_at: string
           id: string
           model: string
+          srp: number | null
           storage_capacity: string | null
           updated_at: string
         }
@@ -137,6 +138,7 @@ export type Database = {
           created_at?: string
           id?: string
           model: string
+          srp?: number | null
           storage_capacity?: string | null
           updated_at?: string
         }
@@ -146,6 +148,7 @@ export type Database = {
           created_at?: string
           id?: string
           model?: string
+          srp?: number | null
           storage_capacity?: string | null
           updated_at?: string
         }
@@ -215,6 +218,7 @@ export type Database = {
         Row: {
           add_stock: number
           adjustment: number
+          cost_price: number | null
           created_at: string
           date: string
           id: string
@@ -225,13 +229,17 @@ export type Database = {
           night_stock: number
           notes: string | null
           phone_model_id: string
+          profit_loss: number | null
           returns: number
+          sale_date: string | null
+          selling_price: number | null
           sold: number
           updated_at: string
         }
         Insert: {
           add_stock?: number
           adjustment?: number
+          cost_price?: number | null
           created_at?: string
           date?: string
           id?: string
@@ -242,13 +250,17 @@ export type Database = {
           night_stock?: number
           notes?: string | null
           phone_model_id: string
+          profit_loss?: number | null
           returns?: number
+          sale_date?: string | null
+          selling_price?: number | null
           sold?: number
           updated_at?: string
         }
         Update: {
           add_stock?: number
           adjustment?: number
+          cost_price?: number | null
           created_at?: string
           date?: string
           id?: string
@@ -259,7 +271,10 @@ export type Database = {
           night_stock?: number
           notes?: string | null
           phone_model_id?: string
+          profit_loss?: number | null
           returns?: number
+          sale_date?: string | null
+          selling_price?: number | null
           sold?: number
           updated_at?: string
         }

@@ -28,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditStockDialog } from "./EditStockDialog";
 import { TransferStockDialog } from "./TransferStockDialog";
+import { SaleConfirmationDialog } from "./SaleConfirmationDialog";
 
 interface StockTableProps {
   selectedDate: Date;
@@ -45,6 +46,10 @@ export interface StockEntry {
   sold: number;
   adjustment: number;
   notes: string | null;
+  selling_price: number;
+  sale_date: string | null;
+  profit_loss: number;
+  cost_price: number;
   stock_locations: {
     id: string;
     name: string;
@@ -55,6 +60,7 @@ export interface StockEntry {
     model: string;
     storage_capacity: string | null;
     color: string | null;
+    srp: number;
   };
 }
 
@@ -62,7 +68,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isMarkAsSoldDialogOpen, setIsMarkAsSoldDialogOpen] = useState(false);
+  const [isSaleConfirmDialogOpen, setIsSaleConfirmDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<StockEntry | null>(null);
@@ -79,7 +85,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
         .select(`
           *,
           stock_locations(id, name),
-          phone_models(id, brand, model, storage_capacity, color)
+          phone_models(id, brand, model, storage_capacity, color, srp)
         `)
         .eq('date', date)
         .order('created_at', { ascending: false });
@@ -151,23 +157,42 @@ export function StockTable({ selectedDate }: StockTableProps) {
   });
 
   const markAsSoldMutation = useMutation({
-    mutationFn: async (entry: StockEntry) => {
-      // Only update sold field, let database trigger handle night_stock calculation
+    mutationFn: async ({ entry, saleData }: { 
+      entry: StockEntry; 
+      saleData: { price: number; date: Date; costPrice: number } 
+    }) => {
+      const profitLoss = saleData.price - saleData.costPrice;
+      
       const { error } = await supabase
         .from('stock_entries')
-        .update({ sold: entry.sold + 1 })
+        .update({ 
+          sold: entry.sold + 1,
+          selling_price: saleData.price,
+          sale_date: format(saleData.date, 'yyyy-MM-dd'),
+          profit_loss: profitLoss,
+          cost_price: saleData.costPrice,
+        })
         .eq('id', entry.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast({ title: "Sukses", description: "Stok telah ditandai sebagai terjual." });
+    onSuccess: (_, { saleData }) => {
+      const profitLoss = saleData.price - saleData.costPrice;
+      const message = profitLoss >= 0 
+        ? `Stok terjual! Laba: Rp ${profitLoss.toLocaleString('id-ID')}` 
+        : `Stok terjual. Rugi: Rp ${Math.abs(profitLoss).toLocaleString('id-ID')}`;
+      
+      toast({ 
+        title: "Sukses", 
+        description: message,
+        variant: profitLoss >= 0 ? "default" : "destructive"
+      });
       queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
     },
     onError: (error) => {
       toast({ title: "Error", description: `Gagal menandai sebagai terjual: ${error.message}`, variant: "destructive" });
     },
     onSettled: () => {
-      setIsMarkAsSoldDialogOpen(false);
+      setIsSaleConfirmDialogOpen(false);
       setSelectedEntry(null);
     }
   });
@@ -179,7 +204,13 @@ export function StockTable({ selectedDate }: StockTableProps) {
 
   const handleMarkAsSoldClick = (entry: StockEntry) => {
     setSelectedEntry(entry);
-    setIsMarkAsSoldDialogOpen(true);
+    setIsSaleConfirmDialogOpen(true);
+  };
+
+  const handleSaleConfirm = (saleData: { price: number; date: Date; costPrice: number }) => {
+    if (selectedEntry) {
+      markAsSoldMutation.mutate({ entry: selectedEntry, saleData });
+    }
   };
 
   const handleEditClick = (entry: StockEntry) => {
@@ -339,22 +370,14 @@ export function StockTable({ selectedDate }: StockTableProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isMarkAsSoldDialogOpen} onOpenChange={setIsMarkAsSoldDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Tandai sebagai Terjual?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Aksi ini akan menambah jumlah terjual dan mengurangi stok malam sebanyak 1.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={() => selectedEntry && markAsSoldMutation.mutate(selectedEntry)}>
-              Ya, Tandai
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SaleConfirmationDialog
+        open={isSaleConfirmDialogOpen}
+        onOpenChange={setIsSaleConfirmDialogOpen}
+        onConfirm={handleSaleConfirm}
+        suggestedPrice={selectedEntry?.phone_models?.srp || 0}
+        itemName={selectedEntry ? `${selectedEntry.phone_models?.brand} ${selectedEntry.phone_models?.model}` : ''}
+        costPrice={selectedEntry?.cost_price || 0}
+      />
 
       <EditStockDialog
         open={isEditDialogOpen}

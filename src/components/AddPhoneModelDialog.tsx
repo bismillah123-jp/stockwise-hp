@@ -33,7 +33,7 @@ interface AddPhoneModelDialogProps {
 }
 
 export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogProps) {
-  const [formData, setFormData] = useState({ model: '', storage_capacity: '' });
+  const [formData, setFormData] = useState({ model: '', storage_capacity: '', srp: '' });
   const [selectedBrand, setSelectedBrand] = useState('');
   const [newBrand, setNewBrand] = useState('');
   const [isAddingBrand, setIsAddingBrand] = useState(false);
@@ -55,7 +55,7 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
   });
 
   const addModelMutation = useMutation({
-    mutationFn: async (dataToInsert: { brand: string; model: string; storage_capacity: string; }) => {
+    mutationFn: async (dataToInsert: { brand: string; model: string; storage_capacity: string; srp: number; }) => {
       const { error } = await supabase.from('phone_models').insert(dataToInsert);
       if (error) throw error;
     },
@@ -86,11 +86,12 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
       toast({ title: 'Error', description: 'Silakan pilih atau tambah merk.', variant: 'destructive' });
       return;
     }
-    addModelMutation.mutate({ ...formData, brand: finalBrand });
+    const srpValue = parseFloat(formData.srp) || 0;
+    addModelMutation.mutate({ ...formData, brand: finalBrand, srp: srpValue });
   };
 
   const resetForm = () => {
-    setFormData({ model: '', storage_capacity: '' });
+    setFormData({ model: '', storage_capacity: '', srp: '' });
     setSelectedBrand('');
     setNewBrand('');
     setIsAddingBrand(false);
@@ -188,6 +189,18 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
           <div className="space-y-2">
             <Label htmlFor="storage_capacity">Kapasitas Penyimpanan</Label>
             <Input id="storage_capacity" value={formData.storage_capacity} onChange={(e) => setFormData({...formData, storage_capacity: e.target.value})} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="srp">SRP (Harga Eceran yang Disarankan)</Label>
+            <Input 
+              id="srp" 
+              type="number" 
+              min="0"
+              step="1000"
+              value={formData.srp} 
+              onChange={(e) => setFormData({...formData, srp: e.target.value})}
+              placeholder="cth: 5000000"
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={addModelMutation.isPending}>
