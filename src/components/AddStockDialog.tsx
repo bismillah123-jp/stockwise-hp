@@ -235,6 +235,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               placeholder="Masukkan IMEI (wajib)"
               value={imei}
               onChange={(e) => setImei(e.target.value)}
+              inputMode="numeric"
               required
             />
             <p className="text-sm text-muted-foreground">1 IMEI = 1 unit stok</p>

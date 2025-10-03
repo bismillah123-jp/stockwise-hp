@@ -38,8 +38,17 @@ export function SaleConfirmationDialog({
   costPrice = 0,
 }: SaleConfirmationDialogProps) {
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [manualPrice, setManualPrice] = useState(suggestedPrice.toString());
+  const [manualPrice, setManualPrice] = useState(suggestedPrice.toLocaleString('id-ID'));
   const [saleDate, setSaleDate] = useState<Date>(new Date());
+
+  const formatPrice = (value: string) => {
+    const numOnly = value.replace(/\D/g, '');
+    return numOnly ? parseInt(numOnly).toLocaleString('id-ID') : '';
+  };
+
+  const parsePriceToNumber = (formattedPrice: string) => {
+    return parseInt(formattedPrice.replace(/\./g, '')) || 0;
+  };
 
   const handleUseSRP = () => {
     onConfirm({
@@ -51,7 +60,7 @@ export function SaleConfirmationDialog({
   };
 
   const handleManualSubmit = () => {
-    const price = parseFloat(manualPrice) || 0;
+    const price = parsePriceToNumber(manualPrice);
     onConfirm({
       price,
       date: saleDate,
@@ -62,7 +71,7 @@ export function SaleConfirmationDialog({
 
   const resetState = () => {
     setShowManualEntry(false);
-    setManualPrice(suggestedPrice.toString());
+    setManualPrice(suggestedPrice.toLocaleString('id-ID'));
     setSaleDate(new Date());
   };
 
@@ -91,11 +100,10 @@ export function SaleConfirmationDialog({
               <Label htmlFor="manual-price">Harga Jual (Rp)</Label>
               <Input
                 id="manual-price"
-                type="number"
-                min="0"
-                step="1000"
+                type="text"
+                inputMode="numeric"
                 value={manualPrice}
-                onChange={(e) => setManualPrice(e.target.value)}
+                onChange={(e) => setManualPrice(formatPrice(e.target.value))}
                 placeholder="Masukkan harga jual"
               />
             </div>
@@ -135,15 +143,15 @@ export function SaleConfirmationDialog({
                 </div>
                 <div className="flex justify-between">
                   <span>Harga Jual:</span>
-                  <span className="font-medium">Rp {(parseFloat(manualPrice) || 0).toLocaleString('id-ID')}</span>
+                  <span className="font-medium">Rp {parsePriceToNumber(manualPrice).toLocaleString('id-ID')}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 mt-1">
                   <span className="font-semibold">Laba/Rugi:</span>
                   <span className={cn(
                     "font-semibold",
-                    (parseFloat(manualPrice) || 0) - costPrice >= 0 ? "text-green-600" : "text-red-600"
+                    parsePriceToNumber(manualPrice) - costPrice >= 0 ? "text-green-600" : "text-red-600"
                   )}>
-                    Rp {((parseFloat(manualPrice) || 0) - costPrice).toLocaleString('id-ID')}
+                    Rp {(parsePriceToNumber(manualPrice) - costPrice).toLocaleString('id-ID')}
                   </span>
                 </div>
               </div>

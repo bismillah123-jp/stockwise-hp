@@ -18,20 +18,23 @@ export function StockAnalytics() {
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const today = new Date().toISOString().split('T')[0];
 
       // Fetch all relevant data in parallel
       const [
         { data: monthlySalesData, error: salesError },
         { data: availableStockData, error: stockError },
-        { data: oldestStockData, error: oldestError }
+        { data: oldestStockData, error: oldestError },
+        { data: todaySalesData, error: todayError }
       ] = await Promise.all([
         supabase.from('stock_entries').select('sold, phone_models(brand)').gte('date', thirtyDaysAgo.toISOString()),
         supabase.from('stock_entries').select('id').gt('night_stock', 0),
-        supabase.from('stock_entries').select('date, phone_models(model)').gt('night_stock', 0).order('date', { ascending: true }).limit(1)
+        supabase.from('stock_entries').select('date, phone_models(model)').gt('night_stock', 0).order('date', { ascending: true }).limit(1),
+        supabase.from('stock_entries').select('selling_price, profit_loss, sold').eq('date', today)
       ]);
 
-      if (salesError || stockError || oldestError) {
-        throw new Error(salesError?.message || stockError?.message || oldestError?.message);
+      if (salesError || stockError || oldestError || todayError) {
+        throw new Error(salesError?.message || stockError?.message || oldestError?.message || todayError?.message);
       }
 
       // Process sales data
@@ -65,11 +68,18 @@ export function StockAnalytics() {
         }
       }
 
+      // Calculate today's profit/loss and revenue
+      const soldItems = todaySalesData?.filter(e => e.sold > 0) || [];
+      const todayProfitLoss = soldItems.reduce((sum, item) => sum + (item.profit_loss || 0), 0);
+      const todayRevenue = soldItems.reduce((sum, item) => sum + (item.selling_price || 0), 0);
+
       return {
         totalSoldMonthly,
         availableStock,
         bestSellingBrand: bestSellingBrand ? `${bestSellingBrand[0]} (${bestSellingBrand[1]})` : 'N/A',
         oldestStock: oldestStock ? `${oldestStock.model} (${oldestStock.days} hari)` : 'N/A',
+        todayProfitLoss,
+        todayRevenue,
       };
     }
   });
@@ -140,7 +150,7 @@ export function StockAnalytics() {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Terjual (Bulan Ini)</CardTitle>
@@ -175,6 +185,32 @@ export function StockAnalytics() {
           </CardHeader>
           <CardContent>
             {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.oldestStock ?? 'N/A'}</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Laba/Rugi Hari Ini</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {kpiLoading ? <AnalyticsLoader /> : (
+              <div className={`text-2xl font-bold ${(kpiStats?.todayProfitLoss ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                Rp {(kpiStats?.todayProfitLoss ?? 0).toLocaleString('id-ID')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Uang Hari Ini</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {kpiLoading ? <AnalyticsLoader /> : (
+              <div className="text-2xl font-bold">
+                Rp {(kpiStats?.todayRevenue ?? 0).toLocaleString('id-ID')}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

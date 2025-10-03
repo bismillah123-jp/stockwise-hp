@@ -84,6 +84,7 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
               placeholder="Masukkan IMEI"
               value={imei}
               onChange={(e) => setImei(e.target.value)}
+              inputMode="numeric"
             />
           </div>
           <div className="space-y-2">
