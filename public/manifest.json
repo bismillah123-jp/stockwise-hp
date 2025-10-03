@@ -1,0 +1,24 @@
+{
+  "name": "Indah Cell - Manajemen Stok HP",
+  "short_name": "Indah Cell",
+  "description": "Sistem manajemen stok HP dengan tracking real-time dan analytics",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#be1e2d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
