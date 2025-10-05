@@ -13,6 +13,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Don't cache Supabase API requests
+  if (event.request.url.includes('supabase.co')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
