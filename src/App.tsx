@@ -18,30 +18,13 @@ const App = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // Clear any corrupted session data
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Session error:', error);
-          // Clear localStorage if there's an error
-          await supabase.auth.signOut();
-          setSession(null);
-        } else {
-          setSession(session);
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        // Clear everything on catastrophic failure
-        await supabase.auth.signOut();
-        setSession(null);
-      } finally {
-        setLoading(false);
-      }
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setLoading(false);
     };
 
-    initializeAuth();
+    getSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);

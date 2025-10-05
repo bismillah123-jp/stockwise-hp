@@ -37,16 +37,12 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Clear any existing corrupted session first
-      await supabase.auth.signOut();
-      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error('Login error:', error);
         toast({
           title: "Gagal masuk",
           description: error.message,
@@ -54,7 +50,6 @@ const Login = () => {
         });
       }
     } catch (error) {
-      console.error('Login exception:', error);
       toast({
         title: "Terjadi kesalahan",
         description: "Silakan coba lagi nanti. Kalo masalah teruss berlanjut silahkan hubungi Sir Ihsan!",
