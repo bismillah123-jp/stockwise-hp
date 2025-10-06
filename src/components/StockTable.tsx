@@ -319,25 +319,25 @@ export function StockTable({ selectedDate }: StockTableProps) {
                              {entry.night_stock}
                            </Badge>
                          </TableCell>
-                         <TableCell>
-                           {entry.selling_price > 0 ? (
-                             <div className="space-y-1">
-                               <div className={cn(
-                                 "text-sm font-medium",
-                                 entry.profit_loss >= 0 ? "text-green-600" : "text-red-600"
-                               )}>
-                                 Rp {entry.selling_price.toLocaleString('id-ID')}
-                               </div>
-                               <div className={cn(
-                                 "text-xs font-semibold",
-                                 entry.profit_loss >= 0 ? "text-green-600" : "text-red-600"
-                               )}>
-                                 {entry.profit_loss >= 0 ? 'Untung' : 'Rugi'}: Rp {Math.abs(entry.profit_loss).toLocaleString('id-ID')}
-                               </div>
-                             </div>
-                           ) : (
-                             <span className="text-xs text-muted-foreground">—</span>
-                           )}
+                          <TableCell>
+                            {entry.selling_price > 0 ? (
+                              <div className="space-y-1">
+                                <div className={cn(
+                                  "text-sm font-medium",
+                                  entry.profit_loss >= 0 ? "text-success" : "text-destructive"
+                                )}>
+                                  Rp {entry.selling_price.toLocaleString('id-ID')}
+                                </div>
+                                <div className={cn(
+                                  "text-xs font-semibold",
+                                  entry.profit_loss >= 0 ? "text-success" : "text-destructive"
+                                )}>
+                                  {entry.profit_loss >= 0 ? 'Untung' : 'Rugi'}: Rp {Math.abs(entry.profit_loss).toLocaleString('id-ID')}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
                          </TableCell>
                          <TableCell>
                            <Badge variant={status.variant} className="text-xs">
