@@ -159,9 +159,9 @@ export function StockTable({ selectedDate }: StockTableProps) {
   const markAsSoldMutation = useMutation({
     mutationFn: async ({ entry, saleData }: { 
       entry: StockEntry; 
-      saleData: { price: number; date: Date; costPrice: number } 
+      saleData: { price: number; date: Date; srp: number } 
     }) => {
-      const profitLoss = saleData.price - saleData.costPrice;
+      const profitLoss = saleData.price - saleData.srp;
       
       const { error } = await supabase
         .from('stock_entries')
@@ -170,13 +170,12 @@ export function StockTable({ selectedDate }: StockTableProps) {
           selling_price: saleData.price,
           sale_date: format(saleData.date, 'yyyy-MM-dd'),
           profit_loss: profitLoss,
-          cost_price: saleData.costPrice,
         })
         .eq('id', entry.id);
       if (error) throw error;
     },
     onSuccess: (_, { saleData }) => {
-      const profitLoss = saleData.price - saleData.costPrice;
+      const profitLoss = saleData.price - saleData.srp;
       const message = profitLoss >= 0 
         ? `Stok terjual! Laba: Rp ${profitLoss.toLocaleString('id-ID')}` 
         : `Stok terjual. Rugi: Rp ${Math.abs(profitLoss).toLocaleString('id-ID')}`;
@@ -207,7 +206,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
     setIsSaleConfirmDialogOpen(true);
   };
 
-  const handleSaleConfirm = (saleData: { price: number; date: Date; costPrice: number }) => {
+  const handleSaleConfirm = (saleData: { price: number; date: Date; srp: number }) => {
     if (selectedEntry) {
       markAsSoldMutation.mutate({ entry: selectedEntry, saleData });
     }
@@ -376,7 +375,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
         onConfirm={handleSaleConfirm}
         suggestedPrice={selectedEntry?.phone_models?.srp || 0}
         itemName={selectedEntry ? `${selectedEntry.phone_models?.brand} ${selectedEntry.phone_models?.model}` : ''}
-        costPrice={selectedEntry?.cost_price || 0}
+        srp={selectedEntry?.phone_models?.srp || 0}
       />
 
       <EditStockDialog

@@ -23,10 +23,10 @@ import {
 interface SaleConfirmationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (saleData: { price: number; date: Date; costPrice: number }) => void;
+  onConfirm: (saleData: { price: number; date: Date; srp: number }) => void;
   suggestedPrice: number;
   itemName: string;
-  costPrice?: number;
+  srp: number;
 }
 
 export function SaleConfirmationDialog({
@@ -35,7 +35,7 @@ export function SaleConfirmationDialog({
   onConfirm,
   suggestedPrice,
   itemName,
-  costPrice = 0,
+  srp,
 }: SaleConfirmationDialogProps) {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualPrice, setManualPrice] = useState(suggestedPrice.toLocaleString('id-ID'));
@@ -54,7 +54,7 @@ export function SaleConfirmationDialog({
     onConfirm({
       price: suggestedPrice,
       date: new Date(),
-      costPrice,
+      srp,
     });
     resetState();
   };
@@ -64,7 +64,7 @@ export function SaleConfirmationDialog({
     onConfirm({
       price,
       date: saleDate,
-      costPrice,
+      srp,
     });
     resetState();
   };
@@ -82,7 +82,7 @@ export function SaleConfirmationDialog({
     onOpenChange(isOpen);
   };
 
-  const profitLoss = suggestedPrice - costPrice;
+  const profitLoss = suggestedPrice - srp;
 
   if (showManualEntry) {
     return (
@@ -135,27 +135,25 @@ export function SaleConfirmationDialog({
               </Popover>
             </div>
 
-            {costPrice > 0 && (
-              <div className="rounded-lg bg-muted p-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Harga Modal:</span>
-                  <span className="font-medium">Rp {costPrice.toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Harga Jual:</span>
-                  <span className="font-medium">Rp {parsePriceToNumber(manualPrice).toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between border-t pt-1 mt-1">
-                  <span className="font-semibold">Laba/Rugi:</span>
-                  <span className={cn(
-                    "font-semibold",
-                    parsePriceToNumber(manualPrice) - costPrice >= 0 ? "text-green-600" : "text-red-600"
-                  )}>
-                    Rp {(parsePriceToNumber(manualPrice) - costPrice).toLocaleString('id-ID')}
-                  </span>
-                </div>
+            <div className="rounded-lg bg-muted p-3 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span>Harga SRP:</span>
+                <span className="font-medium">Rp {srp.toLocaleString('id-ID')}</span>
               </div>
-            )}
+              <div className="flex justify-between">
+                <span>Harga Jual:</span>
+                <span className="font-medium">Rp {parsePriceToNumber(manualPrice).toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 mt-1">
+                <span className="font-semibold">Laba/Rugi:</span>
+                <span className={cn(
+                  "font-semibold",
+                  parsePriceToNumber(manualPrice) - srp >= 0 ? "text-green-600" : "text-red-600"
+                )}>
+                  Rp {(parsePriceToNumber(manualPrice) - srp).toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
@@ -196,23 +194,15 @@ export function SaleConfirmationDialog({
               <span className="text-muted-foreground">Tanggal:</span>
               <span className="font-semibold">{format(new Date(), "dd MMM yyyy")}</span>
             </div>
-            {costPrice > 0 && (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Harga Modal:</span>
-                  <span className="font-semibold">Rp {costPrice.toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t pt-2">
-                  <span className="font-semibold">Laba/Rugi:</span>
-                  <span className={cn(
-                    "font-semibold",
-                    profitLoss >= 0 ? "text-green-600" : "text-red-600"
-                  )}>
-                    Rp {profitLoss.toLocaleString('id-ID')}
-                  </span>
-                </div>
-              </>
-            )}
+            <div className="flex justify-between text-sm border-t pt-2">
+              <span className="font-semibold">Laba/Rugi:</span>
+              <span className={cn(
+                "font-semibold",
+                profitLoss >= 0 ? "text-green-600" : "text-red-600"
+              )}>
+                Rp {profitLoss.toLocaleString('id-ID')}
+              </span>
+            </div>
           </div>
         </div>
 
