@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EditStockDialog } from "./EditStockDialog";
 import { TransferStockDialog } from "./TransferStockDialog";
 import { SaleConfirmationDialog } from "./SaleConfirmationDialog";
+import { cn } from "@/lib/utils";
 
 interface StockTableProps {
   selectedDate: Date;
@@ -320,8 +321,19 @@ export function StockTable({ selectedDate }: StockTableProps) {
                          </TableCell>
                          <TableCell>
                            {entry.selling_price > 0 ? (
-                             <div className="text-sm">
-                               Rp {entry.selling_price.toLocaleString('id-ID')}
+                             <div className="space-y-1">
+                               <div className={cn(
+                                 "text-sm font-medium",
+                                 entry.profit_loss >= 0 ? "text-green-600" : "text-red-600"
+                               )}>
+                                 Rp {entry.selling_price.toLocaleString('id-ID')}
+                               </div>
+                               <div className={cn(
+                                 "text-xs font-semibold",
+                                 entry.profit_loss >= 0 ? "text-green-600" : "text-red-600"
+                               )}>
+                                 {entry.profit_loss >= 0 ? 'Untung' : 'Rugi'}: Rp {Math.abs(entry.profit_loss).toLocaleString('id-ID')}
+                               </div>
                              </div>
                            ) : (
                              <span className="text-xs text-muted-foreground">—</span>
