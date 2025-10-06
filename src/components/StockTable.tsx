@@ -277,6 +277,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
                      <TableHead>IMEI</TableHead>
                      <TableHead>Awal</TableHead>
                      <TableHead>Akhir</TableHead>
+                     <TableHead>Harga Jual</TableHead>
                      <TableHead>Status</TableHead>
                      <TableHead>Aksi</TableHead>
                   </TableRow>
@@ -316,6 +317,15 @@ export function StockTable({ selectedDate }: StockTableProps) {
                            <Badge variant="outline" className="text-xs">
                              {entry.night_stock}
                            </Badge>
+                         </TableCell>
+                         <TableCell>
+                           {entry.selling_price > 0 ? (
+                             <div className="text-sm">
+                               Rp {entry.selling_price.toLocaleString('id-ID')}
+                             </div>
+                           ) : (
+                             <span className="text-xs text-muted-foreground">—</span>
+                           )}
                          </TableCell>
                          <TableCell>
                            <Badge variant={status.variant} className="text-xs">

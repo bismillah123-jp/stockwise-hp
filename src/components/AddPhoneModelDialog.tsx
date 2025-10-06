@@ -33,7 +33,8 @@ interface AddPhoneModelDialogProps {
 }
 
 export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogProps) {
-  const [formData, setFormData] = useState({ model: '', storage_capacity: '', srp: '' });
+  const [formData, setFormData] = useState({ model: '', storage_capacity: '' });
+  const [srpFormatted, setSrpFormatted] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
   const [newBrand, setNewBrand] = useState('');
   const [isAddingBrand, setIsAddingBrand] = useState(false);
@@ -71,6 +72,15 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
     },
   });
 
+  const formatPrice = (value: string) => {
+    const numOnly = value.replace(/\D/g, '');
+    return numOnly ? parseInt(numOnly).toLocaleString('id-ID') : '';
+  };
+
+  const parsePriceToNumber = (formattedPrice: string) => {
+    return parseInt(formattedPrice.replace(/\./g, '')) || 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let finalBrand = selectedBrand;
@@ -86,12 +96,13 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
       toast({ title: 'Error', description: 'Silakan pilih atau tambah merk.', variant: 'destructive' });
       return;
     }
-    const srpValue = parseFloat(formData.srp) || 0;
+    const srpValue = parsePriceToNumber(srpFormatted);
     addModelMutation.mutate({ ...formData, brand: finalBrand, srp: srpValue });
   };
 
   const resetForm = () => {
-    setFormData({ model: '', storage_capacity: '', srp: '' });
+    setFormData({ model: '', storage_capacity: '' });
+    setSrpFormatted('');
     setSelectedBrand('');
     setNewBrand('');
     setIsAddingBrand(false);
@@ -194,12 +205,11 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
             <Label htmlFor="srp">SRP (Harga Eceran yang Disarankan)</Label>
             <Input 
               id="srp" 
-              type="number" 
-              min="0"
-              step="1000"
-              value={formData.srp} 
-              onChange={(e) => setFormData({...formData, srp: e.target.value})}
-              placeholder="cth: 5000000"
+              type="text" 
+              inputMode="numeric"
+              value={srpFormatted} 
+              onChange={(e) => setSrpFormatted(formatPrice(e.target.value))}
+              placeholder="cth: 5.000.000"
             />
           </div>
           <DialogFooter>
