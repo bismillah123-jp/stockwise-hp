@@ -1,16 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, TrendingUp, Package, Clock } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, AreaChart, Area } from "recharts";
+import { BarChart, TrendingUp, Package, Clock, X } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, AreaChart, Area, Sector } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const COLORS = ['hsl(346, 77%, 50%)', 'hsl(142, 76%, 36%)', 'hsl(48, 96%, 50%)', 'hsl(200, 100%, 50%)', 'hsl(260, 100%, 65%)'];
 
+// Render active shape for pie chart
+const renderActiveShape = (props: any) => {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
+
+  return (
+    <g>
+      <text x={cx} y={cy - 10} dy={8} textAnchor="middle" fill="hsl(var(--foreground))" className="font-bold text-lg">
+        {payload.name}
+      </text>
+      <text x={cx} y={cy + 10} dy={8} textAnchor="middle" fill="hsl(var(--muted-foreground))">
+        {value} unit
+      </text>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 10}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+    </g>
+  );
+};
+
 // Main Analytics Component
 export function StockAnalytics() {
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
+  
   // --- DATA QUERIES ---
 
   // 1. Query for KPI cards
@@ -118,6 +148,31 @@ export function StockAnalytics() {
         }, {} as Record<string, number>);
 
         return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+    }
+  });
+
+  // 3b. Query for Selected Brand Details
+  const { data: brandDetails, isLoading: brandDetailsLoading } = useQuery({
+    queryKey: ['brand-details', selectedBrand],
+    enabled: !!selectedBrand,
+    queryFn: async () => {
+      if (!selectedBrand) return [];
+      
+      const { data, error } = await supabase
+        .from('stock_entries')
+        .select('night_stock, phone_models(brand, model, color, storage_capacity), stock_locations(name)')
+        .gt('night_stock', 0)
+        .eq('phone_models.brand', selectedBrand);
+      
+      if (error) throw error;
+      
+      return data.map(entry => ({
+        model: entry.phone_models?.model || 'N/A',
+        color: entry.phone_models?.color || 'N/A',
+        storage: entry.phone_models?.storage_capacity || 'N/A',
+        location: entry.stock_locations?.name || 'N/A',
+        stock: entry.night_stock
+      }));
     }
   });
 
@@ -287,10 +342,24 @@ export function StockAnalytics() {
         </div>
         <div>
           <Card className="animate-fade-in overflow-hidden" style={{ animationDelay: '0.1s' }}>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Komposisi Stok</CardTitle>
+              {selectedBrand && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedBrand(null);
+                    setActiveIndex(undefined);
+                  }}
+                  className="h-8"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Reset
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="h-[400px]">
               {compositionLoading ? <AnalyticsLoader /> : (
                 stockCompositionData && stockCompositionData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -300,22 +369,32 @@ export function StockAnalytics() {
                         dataKey="value" 
                         nameKey="name" 
                         cx="50%" 
-                        cy="50%" 
-                        outerRadius={80} 
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        cy="40%" 
+                        innerRadius={60}
+                        outerRadius={90} 
+                        label={({ name, value }) => `${name}: ${value}`}
+                        labelLine={{ stroke: 'hsl(var(--foreground))', strokeWidth: 1 }}
                         animationBegin={0}
                         animationDuration={800}
+                        activeIndex={activeIndex}
+                        activeShape={renderActiveShape}
+                        onClick={(data, index) => {
+                          setSelectedBrand(data.name);
+                          setActiveIndex(index);
+                        }}
+                        style={{ cursor: 'pointer' }}
                       >
                         {stockCompositionData?.map((_entry, index) => (
                           <Cell 
                             key={`cell-${index}`} 
                             fill={COLORS[index % COLORS.length]}
-                            className="hover:opacity-80 transition-opacity duration-200"
+                            className="transition-all duration-200"
                           />
                         ))}
                       </Pie>
                       <RechartsLegend 
-                        wrapperStyle={{ fontSize: '12px' }}
+                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                        iconType="circle"
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -329,6 +408,52 @@ export function StockAnalytics() {
           </Card>
         </div>
       </div>
+
+      {selectedBrand && (
+        <div>
+          <Card className="animate-fade-in overflow-hidden">
+            <CardHeader>
+              <CardTitle>Detail Stok - {selectedBrand}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {brandDetailsLoading ? <AnalyticsLoader /> : (
+                brandDetails && brandDetails.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Model</TableHead>
+                        <TableHead>Warna</TableHead>
+                        <TableHead>Kapasitas</TableHead>
+                        <TableHead>Lokasi</TableHead>
+                        <TableHead className="text-right">Stok</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {brandDetails.map((item, index) => (
+                        <TableRow 
+                          key={index}
+                          className="transition-all duration-200 hover:bg-accent/50 animate-fade-in"
+                          style={{ animationDelay: `${index * 0.05}s` }}
+                        >
+                          <TableCell className="font-medium">{item.model}</TableCell>
+                          <TableCell>{item.color}</TableCell>
+                          <TableCell>{item.storage}</TableCell>
+                          <TableCell>{item.location}</TableCell>
+                          <TableCell className="text-right font-bold text-primary">{item.stock}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="flex items-center justify-center h-24">
+                    <p className="text-muted-foreground">Tidak ada detail stok</p>
+                  </div>
+                )
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div>
         <Card className="animate-fade-in overflow-hidden" style={{ animationDelay: '0.2s' }}>
