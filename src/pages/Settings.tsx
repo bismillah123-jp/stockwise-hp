@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Papa from "papaparse";
-import { Upload } from "lucide-react";
+import { Upload, Pencil } from "lucide-react";
+import { EditPhoneModelDialog } from "@/components/EditPhoneModelDialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface CsvRow {
   [key: string]: string;
@@ -21,6 +23,21 @@ const Settings = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [editingModel, setEditingModel] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const { data: phoneModels } = useQuery({
+    queryKey: ['phone-models'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('phone_models')
+        .select('*')
+        .order('brand')
+        .order('model');
+      if (error) throw error;
+      return data;
+    },
+  });
 
 
   const downloadCSV = (csv: string, filename: string) => {
@@ -204,6 +221,55 @@ const Settings = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
+          <CardTitle>Kelola SRP</CardTitle>
+          <CardDescription>Edit harga SRP untuk setiap model HP</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Merk</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead>Kapasitas</TableHead>
+                  <TableHead>SRP</TableHead>
+                  <TableHead className="w-[100px]">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {phoneModels?.map((model) => (
+                  <TableRow key={model.id}>
+                    <TableCell>{model.brand}</TableCell>
+                    <TableCell>{model.model}</TableCell>
+                    <TableCell>{model.storage_capacity || '-'}</TableCell>
+                    <TableCell>
+                      {model.srp > 0 
+                        ? `Rp ${model.srp.toLocaleString('id-ID')}`
+                        : '-'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingModel(model);
+                          setIsEditDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Export Data</CardTitle>
           <CardDescription>Download all of your stock data in a single, human-readable CSV file.</CardDescription>
         </CardHeader>
@@ -253,6 +319,12 @@ const Settings = () => {
           </Button>
         </CardContent>
       </Card>
+
+      <EditPhoneModelDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        phoneModel={editingModel}
+      />
     </div>
   );
 };
