@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, TrendingUp, Package, Clock } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, AreaChart, Area } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
+import { cn } from "@/lib/utils";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
+const COLORS = ['hsl(346, 77%, 50%)', 'hsl(142, 76%, 36%)', 'hsl(48, 96%, 50%)', 'hsl(200, 100%, 50%)', 'hsl(260, 100%, 65%)'];
 
 // Main Analytics Component
 export function StockAnalytics() {
@@ -76,8 +77,8 @@ export function StockAnalytics() {
       return {
         totalSoldMonthly,
         availableStock,
-        bestSellingBrand: bestSellingBrand ? `${bestSellingBrand[0]} (${bestSellingBrand[1]})` : 'N/A',
-        oldestStock: oldestStock ? `${oldestStock.model} (${oldestStock.days} hari)` : 'N/A',
+        bestSellingBrand: bestSellingBrand ? `${bestSellingBrand[0]} (${bestSellingBrand[1]})` : null,
+        oldestStock: oldestStock ? `${oldestStock.model} (${oldestStock.days} hari)` : null,
         todayProfitLoss,
         todayRevenue,
       };
@@ -151,63 +152,74 @@ export function StockAnalytics() {
     <div className="space-y-6">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card>
+        <Card className="animate-fade-in hover-scale transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Terjual (Bulan Ini)</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.totalSoldMonthly ?? 0}</div>}
+            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold animate-scale-in">{kpiStats?.totalSoldMonthly ?? 0}</div>}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.1s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Stok Tersedia</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.availableStock ?? 0}</div>}
+            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold animate-scale-in">{kpiStats?.availableStock ?? 0}</div>}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.2s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Brand Terlaris</CardTitle>
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.bestSellingBrand ?? 'N/A'}</div>}
+            {kpiLoading ? <AnalyticsLoader /> : (
+              <div className="text-2xl font-bold animate-scale-in">
+                {kpiStats?.bestSellingBrand ?? <span className="text-sm text-muted-foreground">Belum ada penjualan</span>}
+              </div>
+            )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.3s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Stok Paling Lama</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : <div className="text-2xl font-bold">{kpiStats?.oldestStock ?? 'N/A'}</div>}
+            {kpiLoading ? <AnalyticsLoader /> : (
+              <div className="text-2xl font-bold animate-scale-in">
+                {kpiStats?.oldestStock ?? <span className="text-sm text-muted-foreground">Tidak ada stok</span>}
+              </div>
+            )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.4s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Laba/Rugi Hari Ini</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {kpiLoading ? <AnalyticsLoader /> : (
-              <div className={`text-2xl font-bold ${(kpiStats?.todayProfitLoss ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={cn(
+                "text-2xl font-bold animate-scale-in",
+                (kpiStats?.todayProfitLoss ?? 0) >= 0 ? 'text-success' : 'text-destructive'
+              )}>
                 Rp {(kpiStats?.todayProfitLoss ?? 0).toLocaleString('id-ID')}
               </div>
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.5s' }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Uang Hari Ini</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {kpiLoading ? <AnalyticsLoader /> : (
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold animate-scale-in">
                 Rp {(kpiStats?.todayRevenue ?? 0).toLocaleString('id-ID')}
               </div>
             )}
@@ -218,40 +230,100 @@ export function StockAnalytics() {
       {/* Charts and Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="animate-fade-in overflow-hidden">
             <CardHeader>
               <CardTitle>Grafik Penjualan Harian</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px]">
               {dailySalesLoading ? <AnalyticsLoader /> : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailySalesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis allowDecimals={false} />
-                    <RechartsTooltip />
-                    <Line type="monotone" dataKey="Penjualan" stroke="#8884d8" activeDot={{ r: 8 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                dailySalesData && dailySalesData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailySalesData}>
+                      <defs>
+                        <linearGradient id="colorPenjualan" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(346, 77%, 50%)" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(346, 77%, 50%)" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
+                      <YAxis 
+                        allowDecimals={false}
+                        tick={{ fontSize: 12 }}
+                        stroke="hsl(var(--muted-foreground))"
+                      />
+                      <RechartsTooltip 
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="Penjualan" 
+                        stroke="hsl(346, 77%, 50%)" 
+                        strokeWidth={3}
+                        fill="url(#colorPenjualan)"
+                        animationDuration={1000}
+                        animationBegin={0}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">Belum ada data penjualan</p>
+                  </div>
+                )
               )}
             </CardContent>
           </Card>
         </div>
         <div>
-          <Card>
+          <Card className="animate-fade-in overflow-hidden" style={{ animationDelay: '0.1s' }}>
             <CardHeader>
               <CardTitle>Komposisi Stok</CardTitle>
             </CardHeader>
             <CardContent className="h-[300px]">
               {compositionLoading ? <AnalyticsLoader /> : (
-                 <ResponsiveContainer width="100%" height="100%">
+                stockCompositionData && stockCompositionData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                        <Pie data={stockCompositionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                            {stockCompositionData?.map((_entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <RechartsLegend />
+                      <Pie 
+                        data={stockCompositionData} 
+                        dataKey="value" 
+                        nameKey="name" 
+                        cx="50%" 
+                        cy="50%" 
+                        outerRadius={80} 
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        animationBegin={0}
+                        animationDuration={800}
+                      >
+                        {stockCompositionData?.map((_entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={COLORS[index % COLORS.length]}
+                            className="hover:opacity-80 transition-opacity duration-200"
+                          />
+                        ))}
+                      </Pie>
+                      <RechartsLegend 
+                        wrapperStyle={{ fontSize: '12px' }}
+                      />
                     </PieChart>
-                 </ResponsiveContainer>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">Tidak ada stok tersedia</p>
+                  </div>
+                )
               )}
             </CardContent>
           </Card>
@@ -259,12 +331,13 @@ export function StockAnalytics() {
       </div>
 
       <div>
-        <Card>
+        <Card className="animate-fade-in overflow-hidden" style={{ animationDelay: '0.2s' }}>
           <CardHeader>
             <CardTitle>Tipe HP Terlaris (Bulan Ini)</CardTitle>
           </CardHeader>
           <CardContent>
              {modelsLoading ? <AnalyticsLoader /> : (
+               bestSellingModels && bestSellingModels.length > 0 ? (
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -275,14 +348,23 @@ export function StockAnalytics() {
                     </TableHeader>
                     <TableBody>
                         {bestSellingModels?.map((model, index) => (
-                            <TableRow key={model.name}>
-                                <TableCell>{index + 1}</TableCell>
+                            <TableRow 
+                              key={model.name}
+                              className="transition-all duration-200 hover:bg-accent/50 animate-fade-in"
+                              style={{ animationDelay: `${index * 0.05}s` }}
+                            >
+                                <TableCell className="font-medium">{index + 1}</TableCell>
                                 <TableCell>{model.name}</TableCell>
-                                <TableCell className="text-right">{model.sales}</TableCell>
+                                <TableCell className="text-right font-bold text-primary">{model.sales}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
+               ) : (
+                <div className="flex items-center justify-center h-24">
+                  <p className="text-muted-foreground">Belum ada HP terjual bulan ini</p>
+                </div>
+               )
              )}
           </CardContent>
         </Card>
