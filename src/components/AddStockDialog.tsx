@@ -81,6 +81,19 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
+      // Check if IMEI already exists
+      const { data: existingImei, error: checkError } = await supabase
+        .from('stock_entries')
+        .select('id')
+        .eq('imei', imei.trim())
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      
+      if (existingImei) {
+        throw new Error('Stok dengan IMEI ini sudah ada');
+      }
+
       // Add Stock: Corrects morning stock - both morning_stock and night_stock should be the same after correction
       // This represents a correction to the initial morning inventory
       const { data: newEntry, error: insertError } = await supabase
@@ -98,10 +111,6 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
         .single();
 
       if (insertError) {
-        // Handle unique constraint violation for IMEI
-        if (insertError.code === '23505') {
-          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal dan model ini.`);
-        }
         throw new Error(`Gagal menambahkan stok: ${insertError.message}`);
       }
 

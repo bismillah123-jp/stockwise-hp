@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import Papa from "papaparse";
-import { Upload, Pencil } from "lucide-react";
+import { Upload, Pencil, LogOut } from "lucide-react";
 import { EditPhoneModelDialog } from "@/components/EditPhoneModelDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useNavigate } from "react-router-dom";
+import { Footer } from "@/components/Footer";
 
 interface CsvRow {
   [key: string]: string;
@@ -18,6 +20,7 @@ interface CsvRow {
 const Settings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isExporting, setIsExporting] = useState(false);
   const [resetConfirmation, setResetConfirmation] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -25,6 +28,23 @@ const Settings = () => {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [editingModel, setEditingModel] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Gagal Logout",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Logout Berhasil",
+        description: "Anda telah keluar dari aplikasi",
+      });
+      navigate('/login');
+    }
+  };
 
   const { data: phoneModels } = useQuery({
     queryKey: ['phone-models'],
@@ -221,6 +241,19 @@ const Settings = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
+          <CardTitle>Akun</CardTitle>
+          <CardDescription>Kelola akun Anda</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Kelola SRP</CardTitle>
           <CardDescription>Edit harga SRP untuk setiap model HP</CardDescription>
         </CardHeader>
@@ -325,6 +358,7 @@ const Settings = () => {
         onOpenChange={setIsEditDialogOpen}
         phoneModel={editingModel}
       />
+      <Footer />
     </div>
   );
 };

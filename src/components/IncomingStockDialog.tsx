@@ -81,6 +81,19 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
+      // Check if IMEI already exists
+      const { data: existingImei, error: checkError } = await supabase
+        .from('stock_entries')
+        .select('id')
+        .eq('imei', imei.trim())
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      
+      if (existingImei) {
+        throw new Error('Stok dengan IMEI ini sudah ada');
+      }
+
       // Incoming HP: HP yang datang di tengah hari
       // morning_stock = 0 (tidak ada di pagi hari), incoming = 1
       // night_stock = 0 + 1 + 0 + 0 + 0 - 0 = 1 (via trigger)
@@ -99,9 +112,6 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
         .single();
 
       if (insertError) {
-        if (insertError.code === '23505') {
-          throw new Error(`Gagal: IMEI ${imei.trim()} sudah tercatat untuk tanggal dan model ini.`);
-        }
         throw new Error(`Gagal mencatat HP datang: ${insertError.message}`);
       }
 
