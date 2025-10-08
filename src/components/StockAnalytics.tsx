@@ -59,8 +59,8 @@ export function StockAnalytics() {
         { data: todaySalesData, error: todayError }
       ] = await Promise.all([
         supabase.from('stock_entries').select('sold, phone_models(brand)').gte('date', thirtyDaysAgo.toISOString()),
-        supabase.from('stock_entries').select('id').gt('night_stock', 0),
-        supabase.from('stock_entries').select('date, phone_models(model)').gt('night_stock', 0).order('date', { ascending: true }).limit(1),
+        supabase.from('stock_entries').select('night_stock').eq('date', today).gt('night_stock', 0),
+        supabase.from('stock_entries').select('date, phone_models(model)').eq('date', today).gt('night_stock', 0).order('date', { ascending: true }).limit(1),
         supabase.from('stock_entries').select('selling_price, profit_loss, sold').eq('date', today)
       ]);
 
@@ -79,8 +79,8 @@ export function StockAnalytics() {
         ? Object.entries(brandSales).sort((a, b) => b[1] - a[1])[0]
         : null;
 
-      // Process available stock
-      const availableStock = availableStockData?.length || 0;
+      // Process available stock - sum night_stock values for today
+      const availableStock = availableStockData?.reduce((sum, entry) => sum + (entry.night_stock || 0), 0) || 0;
 
       // Process oldest stock
       let oldestStock = null;
@@ -138,12 +138,13 @@ export function StockAnalytics() {
   const { data: stockCompositionData, isLoading: compositionLoading } = useQuery({
     queryKey: ['stock-composition'],
     queryFn: async () => {
-        const { data, error } = await supabase.from('stock_entries').select('night_stock, phone_models(brand)').gt('night_stock', 0);
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase.from('stock_entries').select('night_stock, phone_models(brand)').eq('date', today).gt('night_stock', 0);
         if (error) throw error;
 
         const grouped = data.reduce((acc, entry) => {
             const brand = entry.phone_models?.brand || 'Unknown';
-            acc[brand] = (acc[brand] || 0) + 1;
+            acc[brand] = (acc[brand] || 0) + (entry.night_stock || 0);
             return acc;
         }, {} as Record<string, number>);
 
@@ -158,19 +159,23 @@ export function StockAnalytics() {
     queryFn: async () => {
       if (!selectedBrand) return [];
       
+      const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('stock_entries')
         .select('night_stock, phone_models(brand, model, color, storage_capacity), stock_locations(name)')
-        .gt('night_stock', 0)
-        .eq('phone_models.brand', selectedBrand);
+        .eq('date', today)
+        .gt('night_stock', 0);
       
       if (error) throw error;
       
-      return data.map(entry => ({
-        model: entry.phone_models?.model || 'N/A',
-        color: entry.phone_models?.color || 'N/A',
-        storage: entry.phone_models?.storage_capacity || 'N/A',
-        location: entry.stock_locations?.name || 'N/A',
+      // Filter by brand after fetching (Supabase doesn't support filtering nested relations directly)
+      const filtered = data.filter(entry => entry.phone_models?.brand === selectedBrand);
+      
+      return filtered.map(entry => ({
+        model: entry.phone_models?.model || '-',
+        color: entry.phone_models?.color || '-',
+        storage: entry.phone_models?.storage_capacity || '-',
+        location: entry.stock_locations?.name || '-',
         stock: entry.night_stock
       }));
     }
