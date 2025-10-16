@@ -295,6 +295,63 @@ export type Database = {
           },
         ]
       }
+      stock_events: {
+        Row: {
+          id: number
+          created_at: string
+          date: string
+          imei: string
+          location_id: string
+          phone_model_id: string
+          event_type: 'masuk' | 'laku' | 'retur_in' | 'retur_out' | 'transfer_out' | 'transfer_in' | 'koreksi'
+          qty: number
+          notes: string | null
+          created_by: string | null
+          metadata: Json
+        }
+        Insert: {
+          id?: number
+          created_at?: string
+          date: string
+          imei: string
+          location_id: string
+          phone_model_id: string
+          event_type: 'masuk' | 'laku' | 'retur_in' | 'retur_out' | 'transfer_out' | 'transfer_in' | 'koreksi'
+          qty?: number
+          notes?: string | null
+          created_by?: string | null
+          metadata?: Json
+        }
+        Update: {
+          id?: number
+          created_at?: string
+          date?: string
+          imei?: string
+          location_id?: string
+          phone_model_id?: string
+          event_type?: 'masuk' | 'laku' | 'retur_in' | 'retur_out' | 'transfer_out' | 'transfer_in' | 'koreksi'
+          qty?: number
+          notes?: string | null
+          created_by?: string | null
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_events_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_events_phone_model_id_fkey"
+            columns: ["phone_model_id"]
+            isOneToOne: false
+            referencedRelation: "phone_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_locations: {
         Row: {
           created_at: string

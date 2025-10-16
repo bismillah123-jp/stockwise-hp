@@ -66,8 +66,13 @@ export interface StockEntry {
 }
 
 export function StockTable({ selectedDate }: StockTableProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [brandFilter, setBrandFilter] = useState("all");
+  // Load filters from localStorage
+  const [searchTerm, setSearchTerm] = useState(() => {
+    return localStorage.getItem('stockTableSearchTerm') || "";
+  });
+  const [brandFilter, setBrandFilter] = useState(() => {
+    return localStorage.getItem('stockTableBrandFilter') || "all";
+  });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSaleConfirmDialogOpen, setIsSaleConfirmDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -75,6 +80,18 @@ export function StockTable({ selectedDate }: StockTableProps) {
   const [selectedEntry, setSelectedEntry] = useState<StockEntry | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Save search term to localStorage when it changes
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    localStorage.setItem('stockTableSearchTerm', value);
+  };
+
+  // Save brand filter to localStorage when it changes
+  const handleBrandFilterChange = (value: string) => {
+    setBrandFilter(value);
+    localStorage.setItem('stockTableBrandFilter', value);
+  };
 
   const { data: stockEntries, isLoading } = useQuery({
     queryKey: ['stock-entries', searchTerm, brandFilter, selectedDate],
@@ -160,9 +177,11 @@ export function StockTable({ selectedDate }: StockTableProps) {
   const markAsSoldMutation = useMutation({
     mutationFn: async ({ entry, saleData }: { 
       entry: StockEntry; 
-      saleData: { price: number; date: Date; srp: number } 
+      saleData: { price: number; date: Date; srp: number; costPrice: number } 
     }) => {
-      const profitLoss = saleData.price - saleData.srp;
+      // Use cost_price if available, otherwise use SRP for profit/loss calculation
+      const costBasis = saleData.costPrice > 0 ? saleData.costPrice : saleData.srp;
+      const profitLoss = saleData.price - costBasis;
       
       const { error } = await supabase
         .from('stock_entries')
@@ -176,7 +195,8 @@ export function StockTable({ selectedDate }: StockTableProps) {
       if (error) throw error;
     },
     onSuccess: (_, { saleData }) => {
-      const profitLoss = saleData.price - saleData.srp;
+      const costBasis = saleData.costPrice > 0 ? saleData.costPrice : saleData.srp;
+      const profitLoss = saleData.price - costBasis;
       const message = profitLoss >= 0 
         ? `Stok terjual! Laba: Rp ${profitLoss.toLocaleString('id-ID')}` 
         : `Stok terjual. Rugi: Rp ${Math.abs(profitLoss).toLocaleString('id-ID')}`;
@@ -207,7 +227,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
     setIsSaleConfirmDialogOpen(true);
   };
 
-  const handleSaleConfirm = (saleData: { price: number; date: Date; srp: number }) => {
+  const handleSaleConfirm = (saleData: { price: number; date: Date; srp: number; costPrice: number }) => {
     if (selectedEntry) {
       markAsSoldMutation.mutate({ entry: selectedEntry, saleData });
     }
@@ -239,13 +259,13 @@ export function StockTable({ selectedDate }: StockTableProps) {
               <Input
                 placeholder="Cari berdasarkan merk, model, IMEI, atau warna..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>
             <select
               value={brandFilter}
-              onChange={(e) => setBrandFilter(e.target.value)}
+              onChange={(e) => handleBrandFilterChange(e.target.value)}
               className="bg-background border border-border rounded-lg px-3 py-2 text-sm min-w-32"
             >
               <option value="all">Semua Merk</option>
@@ -268,19 +288,19 @@ export function StockTable({ selectedDate }: StockTableProps) {
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-border/50 overflow-hidden">
+            <div className="rounded-lg border border-border/50 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">
-                     <TableHead>Tanggal</TableHead>
-                     <TableHead>Lokasi</TableHead>
-                     <TableHead>Tipe</TableHead>
-                     <TableHead>IMEI</TableHead>
-                     <TableHead>Awal</TableHead>
-                     <TableHead>Akhir</TableHead>
-                     <TableHead>Harga Jual</TableHead>
-                     <TableHead>Status</TableHead>
-                     <TableHead>Aksi</TableHead>
+                     <TableHead className="min-w-[100px]">Tanggal</TableHead>
+                     <TableHead className="min-w-[80px]">Lokasi</TableHead>
+                     <TableHead className="min-w-[150px]">Tipe</TableHead>
+                     <TableHead className="min-w-[120px]">IMEI</TableHead>
+                     <TableHead className="min-w-[60px]">Awal</TableHead>
+                     <TableHead className="min-w-[60px]">Akhir</TableHead>
+                     <TableHead className="min-w-[100px]">Harga Jual</TableHead>
+                     <TableHead className="min-w-[80px]">Status</TableHead>
+                     <TableHead className="min-w-[140px]">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -398,6 +418,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
         suggestedPrice={selectedEntry?.phone_models?.srp || 0}
         itemName={selectedEntry ? `${selectedEntry.phone_models?.brand} ${selectedEntry.phone_models?.model}` : ''}
         srp={selectedEntry?.phone_models?.srp || 0}
+        costPrice={selectedEntry?.cost_price || 0}
       />
 
       <EditStockDialog

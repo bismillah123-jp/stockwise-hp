@@ -30,14 +30,38 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
 
   const editStockMutation = useMutation({
     mutationFn: async ({ notes, imei }: { notes: string; imei: string }) => {
-      if (!stockEntry) throw new Error("No stock entry selected for editing.");
+      if (!stockEntry) throw new Error("Tidak ada entri stok yang dipilih");
+      
+      // Validate IMEI if changed
+      if (imei.trim() && imei.trim() !== stockEntry.imei) {
+        if (imei.trim().length < 10) {
+          throw new Error('IMEI tidak valid (minimal 10 karakter)');
+        }
+        
+        // Check if new IMEI already exists
+        const { data: existingImei, error: checkError } = await supabase
+          .from('stock_entries')
+          .select('id')
+          .eq('imei', imei.trim())
+          .neq('id', stockEntry.id)
+          .maybeSingle();
+
+        if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
+        
+        if (existingImei) {
+          throw new Error('IMEI ini sudah terdaftar untuk stok lain');
+        }
+      }
 
       const { error } = await supabase
         .from('stock_entries')
-        .update({ notes, imei })
+        .update({ 
+          notes: notes.trim() || null, 
+          imei: imei.trim() || null 
+        })
         .eq('id', stockEntry.id);
 
-      if (error) throw error;
+      if (error) throw new Error(`Gagal memperbarui stok: ${error.message}`);
     },
     onSuccess: () => {
       toast({

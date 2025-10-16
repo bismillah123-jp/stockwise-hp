@@ -39,58 +39,37 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
       if (!destLocation) throw new Error("Destination location not found.");
       const destLocationName = destLocation.name;
 
-      // 1. Update source entry with a negative adjustment
+      // 1. Mark the source entry as sold = 1 (transferred out)
+      // This properly removes it from the source location
       const { error: updateSourceError } = await supabase
         .from('stock_entries')
         .update({
-          adjustment: stockEntry.adjustment - transferQty,
-          notes: `${stockEntry.notes || ''} | Transfer Out to ${destLocationName}`.trim(),
+          sold: 1,
+          notes: `${stockEntry.notes || ''} | Transferred Out to ${destLocationName}`.trim(),
         })
         .eq('id', stockEntry.id);
 
       if (updateSourceError) throw new Error(`Failed to update source stock: ${updateSourceError.message}`);
 
-      // 2. Find or create entry at destination for the same date and model
-      const { data: destEntry, error: findDestError } = await supabase
+      // 2. Create a new entry at the destination with the same IMEI
+      // This represents the incoming stock at the destination
+      const { error: createDestError } = await supabase
         .from('stock_entries')
-        .select('id, adjustment')
-        .eq('date', stockEntry.date)
-        .eq('location_id', destinationId)
-        .eq('phone_model_id', stockEntry.phone_models.id)
-        .maybeSingle();
-
-      if (findDestError) throw new Error(`Failed to find destination stock: ${findDestError.message}`);
-
-      if (destEntry) {
-        // 2a. Update existing destination entry
-        const { error: updateDestError } = await supabase
-          .from('stock_entries')
-          .update({
-            adjustment: destEntry.adjustment + transferQty,
-            notes: `Transfer In from ${sourceLocationName}`,
-          })
-          .eq('id', destEntry.id);
-        if (updateDestError) throw new Error(`Failed to update destination stock: ${updateDestError.message}`);
-      } else {
-        // 2b. Create new destination entry
-        const { error: createDestError } = await supabase
-          .from('stock_entries')
-          .insert({
-            date: stockEntry.date,
-            location_id: destinationId,
-            phone_model_id: stockEntry.phone_models.id,
-            imei: stockEntry.imei, // Transfer the IMEI
-            adjustment: transferQty,
-            notes: `Transfer In from ${sourceLocationName}`,
-            // Set other fields to 0 as it's a new entry for this day
-            morning_stock: 0,
-            incoming: 0,
-            add_stock: 0,
-            returns: 0,
-            sold: 0,
-          });
-        if (createDestError) throw new Error(`Failed to create destination stock: ${createDestError.message}`);
-      }
+        .insert({
+          date: stockEntry.date,
+          location_id: destinationId,
+          phone_model_id: stockEntry.phone_models.id,
+          imei: stockEntry.imei, // Transfer the IMEI to destination
+          morning_stock: 0, // Didn't exist in morning at destination
+          incoming: transferQty, // Came in via transfer
+          add_stock: 0,
+          returns: 0,
+          sold: 0,
+          adjustment: 0,
+          notes: `Transferred In from ${sourceLocationName}`,
+        });
+      
+      if (createDestError) throw new Error(`Failed to create destination stock: ${createDestError.message}`);
     },
     onSuccess: () => {
       toast({ title: "Sukses", description: "Stok berhasil ditransfer." });

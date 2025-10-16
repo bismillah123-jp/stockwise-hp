@@ -23,10 +23,11 @@ import {
 interface SaleConfirmationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (saleData: { price: number; date: Date; srp: number }) => void;
+  onConfirm: (saleData: { price: number; date: Date; srp: number; costPrice: number }) => void;
   suggestedPrice: number;
   itemName: string;
   srp: number;
+  costPrice: number;
 }
 
 export function SaleConfirmationDialog({
@@ -36,6 +37,7 @@ export function SaleConfirmationDialog({
   suggestedPrice,
   itemName,
   srp,
+  costPrice,
 }: SaleConfirmationDialogProps) {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualPrice, setManualPrice] = useState(suggestedPrice.toLocaleString('id-ID'));
@@ -55,6 +57,7 @@ export function SaleConfirmationDialog({
       price: suggestedPrice,
       date: new Date(),
       srp,
+      costPrice,
     });
     resetState();
   };
@@ -65,6 +68,7 @@ export function SaleConfirmationDialog({
       price,
       date: saleDate,
       srp,
+      costPrice,
     });
     resetState();
   };
@@ -82,7 +86,9 @@ export function SaleConfirmationDialog({
     onOpenChange(isOpen);
   };
 
-  const profitLoss = suggestedPrice - srp;
+  // Use cost price if available, otherwise use SRP
+  const costBasis = costPrice > 0 ? costPrice : srp;
+  const profitLoss = suggestedPrice - costBasis;
 
   if (showManualEntry) {
     return (
@@ -136,6 +142,12 @@ export function SaleConfirmationDialog({
             </div>
 
             <div className="rounded-lg bg-muted p-3 space-y-1 text-sm">
+              {costPrice > 0 && (
+                <div className="flex justify-between">
+                  <span>Harga Modal:</span>
+                  <span className="font-medium">Rp {costPrice.toLocaleString('id-ID')}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Harga SRP:</span>
                 <span className="font-medium">Rp {srp.toLocaleString('id-ID')}</span>
@@ -148,11 +160,16 @@ export function SaleConfirmationDialog({
                 <span className="font-semibold">Laba/Rugi:</span>
                 <span className={cn(
                   "font-semibold",
-                  parsePriceToNumber(manualPrice) - srp >= 0 ? "text-green-600" : "text-red-600"
+                  parsePriceToNumber(manualPrice) - (costPrice > 0 ? costPrice : srp) >= 0 ? "text-green-600" : "text-red-600"
                 )}>
-                  Rp {(parsePriceToNumber(manualPrice) - srp).toLocaleString('id-ID')}
+                  Rp {(parsePriceToNumber(manualPrice) - (costPrice > 0 ? costPrice : srp)).toLocaleString('id-ID')}
                 </span>
               </div>
+              {costPrice > 0 && (
+                <div className="text-xs text-muted-foreground pt-1">
+                  *Laba/rugi dihitung dari harga modal
+                </div>
+              )}
             </div>
           </div>
 
@@ -186,6 +203,12 @@ export function SaleConfirmationDialog({
           </div>
 
           <div className="rounded-lg bg-muted p-4 space-y-2">
+            {costPrice > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Harga Modal:</span>
+                <span className="font-semibold">Rp {costPrice.toLocaleString('id-ID')}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Harga SRP:</span>
               <span className="font-semibold">Rp {suggestedPrice.toLocaleString('id-ID')}</span>
@@ -203,6 +226,11 @@ export function SaleConfirmationDialog({
                 Rp {profitLoss.toLocaleString('id-ID')}
               </span>
             </div>
+            {costPrice > 0 && (
+              <div className="text-xs text-muted-foreground">
+                *Laba/rugi dihitung dari harga modal
+              </div>
+            )}
           </div>
         </div>
 

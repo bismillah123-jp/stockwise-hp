@@ -27,6 +27,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [imei, setImei] = useState<string>("");
+  const [costPrice, setCostPrice] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -74,8 +75,21 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
 
   const addStockMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedLocation || !selectedModel || !imei.trim()) {
-        throw new Error('Lokasi, Model HP, dan IMEI wajib diisi');
+      // Validation
+      if (!selectedLocation) {
+        throw new Error('Lokasi wajib dipilih');
+      }
+      if (!selectedBrand) {
+        throw new Error('Merk wajib dipilih');
+      }
+      if (!selectedModel) {
+        throw new Error('Model HP wajib dipilih');
+      }
+      if (!imei.trim()) {
+        throw new Error('IMEI wajib diisi');
+      }
+      if (imei.trim().length < 10) {
+        throw new Error('IMEI tidak valid (minimal 10 karakter)');
       }
 
       const date = format(selectedDate, "yyyy-MM-dd");
@@ -88,11 +102,14 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
         .eq('imei', imei.trim())
         .maybeSingle();
 
-      if (checkError) throw checkError;
+      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
       
       if (existingImei) {
-        throw new Error('Stok dengan IMEI ini sudah ada');
+        throw new Error('Stok dengan IMEI ini sudah terdaftar di sistem');
       }
+
+      // Parse cost price - remove dots and convert to number
+      const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
       // Add Stock: Corrects morning stock - both morning_stock and night_stock should be the same after correction
       // This represents a correction to the initial morning inventory
@@ -105,6 +122,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           morning_stock: quantityNum, // Set the corrected morning stock
           imei: imei.trim(),
           notes: notes || null,
+          cost_price: costPriceNum > 0 ? costPriceNum : null,
           // All other fields remain 0, so night_stock = morning_stock (1) via trigger
         })
         .select()
@@ -143,6 +161,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       setSelectedModel("");
       setNotes("");
       setImei("");
+      setCostPrice("");
     },
     onError: (error: any) => {
       toast({
@@ -248,6 +267,20 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               required
             />
             <p className="text-sm text-muted-foreground">1 IMEI = 1 unit stok</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Harga Modal (Opsional)</Label>
+            <Input
+              placeholder="Masukkan harga modal"
+              value={costPrice}
+              onChange={(e) => {
+                const numOnly = e.target.value.replace(/\D/g, '');
+                setCostPrice(numOnly ? parseInt(numOnly).toLocaleString('id-ID') : '');
+              }}
+              inputMode="numeric"
+            />
+            <p className="text-sm text-muted-foreground">Untuk perhitungan laba/rugi yang akurat</p>
           </div>
 
           <div className="space-y-2">

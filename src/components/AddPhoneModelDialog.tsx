@@ -83,10 +83,16 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate brand
     let finalBrand = selectedBrand;
     if (isAddingBrand) {
         if (!newBrand.trim()) {
             toast({ title: 'Error', description: 'Nama merk tidak boleh kosong.', variant: 'destructive' });
+            return;
+        }
+        if (newBrand.trim().length < 2) {
+            toast({ title: 'Error', description: 'Nama merk minimal 2 karakter.', variant: 'destructive' });
             return;
         }
         finalBrand = newBrand.trim().toUpperCase();
@@ -96,8 +102,30 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
       toast({ title: 'Error', description: 'Silakan pilih atau tambah merk.', variant: 'destructive' });
       return;
     }
+    
+    // Validate model
+    if (!formData.model.trim()) {
+      toast({ title: 'Error', description: 'Model HP wajib diisi.', variant: 'destructive' });
+      return;
+    }
+    if (formData.model.trim().length < 2) {
+      toast({ title: 'Error', description: 'Model HP minimal 2 karakter.', variant: 'destructive' });
+      return;
+    }
+    
+    // Validate SRP
     const srpValue = parsePriceToNumber(srpFormatted);
-    addModelMutation.mutate({ ...formData, brand: finalBrand, srp: srpValue });
+    if (srpValue <= 0) {
+      toast({ title: 'Error', description: 'SRP harus lebih dari 0.', variant: 'destructive' });
+      return;
+    }
+    
+    addModelMutation.mutate({ 
+      brand: finalBrand, 
+      model: formData.model.trim(), 
+      storage_capacity: formData.storage_capacity.trim() || null,
+      srp: srpValue 
+    });
   };
 
   const resetForm = () => {
