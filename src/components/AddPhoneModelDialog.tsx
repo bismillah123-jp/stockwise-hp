@@ -157,11 +157,11 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle>Tambah Model HP Baru</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pb-4">
           <div className="space-y-2">
               <Label htmlFor="brand">Merk</Label>
               {isAddingBrand ? (

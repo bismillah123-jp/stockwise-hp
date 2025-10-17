@@ -11,7 +11,6 @@ import { Upload, Pencil, LogOut } from "lucide-react";
 import { EditPhoneModelDialog } from "@/components/EditPhoneModelDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
-import { Footer } from "@/components/Footer";
 
 interface CsvRow {
   [key: string]: string;
@@ -358,7 +357,6 @@ const Settings = () => {
         onOpenChange={setIsEditDialogOpen}
         phoneModel={editingModel}
       />
-      <Footer />
     </div>
   );
 };

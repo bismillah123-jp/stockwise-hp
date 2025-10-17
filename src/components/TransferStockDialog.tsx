@@ -93,14 +93,14 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle>Transfer Stok</DialogTitle>
           <DialogDescription>
             Transfer item ke lokasi lain.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 pb-4">
           <div>
             <p className="font-medium">{stockEntry?.phone_models.brand} {stockEntry?.phone_models.model}</p>
             <p className="text-sm text-muted-foreground">IMEI: {stockEntry?.imei}</p>

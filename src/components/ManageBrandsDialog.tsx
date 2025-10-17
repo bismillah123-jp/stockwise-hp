@@ -103,55 +103,56 @@ export function ManageBrandsDialog({ open, onOpenChange }: ManageBrandsDialogPro
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[80vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
             <DialogTitle>Kelola Merk</DialogTitle>
+            <DialogDescription>Edit atau hapus merk HP yang ada</DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto pr-4 -mr-4">
-              {brandsLoading ? (
-                  <div className="space-y-2">
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                      <Skeleton className="h-10 w-full" />
-                  </div>
-              ) : (
-                  <ul className="space-y-2">
-                      {brands?.map((brand) => (
-                          <li key={brand} className="flex justify-between items-center p-2 border rounded-md">
-                              <span className="font-medium">{brand}</span>
-                              <div className="space-x-2">
-                                  <Button variant="ghost" size="icon" onClick={() => {
-                                      setEditingBrand(brand);
-                                      setNewBrandName(brand);
-                                      setIsEditDialogOpen(true);
-                                  }}>
-                                      <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => {
-                                      setDeletingBrand(brand);
-                                      setIsDeleteDialogOpen(true);
-                                  }}>
-                                      <Trash2 className="h-4 w-4" />
-                                  </Button>
-                              </div>
-                          </li>
-                      ))}
-                  </ul>
-              )}
+          <div className="space-y-2 pb-4">
+            {brandsLoading ? (
+                <div className="space-y-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            ) : (
+                <ul className="space-y-2">
+                    {brands?.map((brand) => (
+                        <li key={brand} className="flex justify-between items-center p-2 border rounded-md">
+                            <span className="font-medium">{brand}</span>
+                            <div className="space-x-2">
+                                <Button variant="ghost" size="icon" onClick={() => {
+                                    setEditingBrand(brand);
+                                    setNewBrandName(brand);
+                                    setIsEditDialogOpen(true);
+                                }}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => {
+                                    setDeletingBrand(brand);
+                                    setIsDeleteDialogOpen(true);
+                                }}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Edit Brand Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
                 <DialogTitle>Edit Merk</DialogTitle>
                 <DialogDescription>
                     Mengubah nama merk akan diperbarui untuk semua model terkait.
                 </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-2">
+            <div className="py-4 space-y-2 pb-4">
                 <Label htmlFor="edit-brand-name">Nama Merk</Label>
                 <Input
                     id="edit-brand-name"

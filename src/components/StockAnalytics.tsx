@@ -36,8 +36,12 @@ const renderActiveShape = (props: any) => {
   );
 };
 
+interface StockAnalyticsProps {
+  selectedDate?: Date;
+}
+
 // Main Analytics Component
-export function StockAnalytics() {
+export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProps) {
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
   
@@ -45,11 +49,11 @@ export function StockAnalytics() {
 
   // 1. Query for KPI cards
   const { data: kpiStats, isLoading: kpiLoading } = useQuery({
-    queryKey: ['kpi-stats'],
+    queryKey: ['kpi-stats', selectedDate],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
+      const thirtyDaysAgo = new Date(selectedDate);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const today = new Date().toISOString().split('T')[0];
+      const today = selectedDate.toISOString().split('T')[0];
 
       // Fetch all relevant data in parallel
       const [
@@ -117,9 +121,9 @@ export function StockAnalytics() {
 
   // 2. Query for Daily Sales Chart
   const { data: dailySalesData, isLoading: dailySalesLoading } = useQuery({
-    queryKey: ['daily-sales-chart'],
+    queryKey: ['daily-sales-chart', selectedDate],
     queryFn: async () => {
-      const thirtyDaysAgo = new Date();
+      const thirtyDaysAgo = new Date(selectedDate);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const { data, error } = await supabase.from('stock_entries').select('date, sold').gte('date', thirtyDaysAgo.toISOString()).order('date');
       if (error) throw error;
@@ -136,9 +140,9 @@ export function StockAnalytics() {
 
   // 3. Query for Stock Composition Pie Chart
   const { data: stockCompositionData, isLoading: compositionLoading } = useQuery({
-    queryKey: ['stock-composition'],
+    queryKey: ['stock-composition', selectedDate],
     queryFn: async () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = selectedDate.toISOString().split('T')[0];
         const { data, error } = await supabase.from('stock_entries').select('night_stock, phone_models(brand)').eq('date', today).gt('night_stock', 0);
         if (error) throw error;
 
@@ -154,12 +158,12 @@ export function StockAnalytics() {
 
   // 3b. Query for Selected Brand Details
   const { data: brandDetails, isLoading: brandDetailsLoading } = useQuery({
-    queryKey: ['brand-details', selectedBrand],
+    queryKey: ['brand-details', selectedBrand, selectedDate],
     enabled: !!selectedBrand,
     queryFn: async () => {
       if (!selectedBrand) return [];
       
-      const today = new Date().toISOString().split('T')[0];
+      const today = selectedDate.toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('stock_entries')
         .select('night_stock, phone_models(brand, model, color, storage_capacity), stock_locations(name)')
@@ -183,9 +187,9 @@ export function StockAnalytics() {
 
   // 4. Query for Best Selling Models Table
   const { data: bestSellingModels, isLoading: modelsLoading } = useQuery({
-    queryKey: ['best-selling-models'],
+    queryKey: ['best-selling-models', selectedDate],
     queryFn: async () => {
-        const thirtyDaysAgo = new Date();
+        const thirtyDaysAgo = new Date(selectedDate);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const { data, error } = await supabase.from('stock_entries').select('sold, phone_models(brand, model, color)').gte('date', thirtyDaysAgo.toISOString());
         if (error) throw error;

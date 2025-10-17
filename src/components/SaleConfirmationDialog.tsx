@@ -93,15 +93,15 @@ export function SaleConfirmationDialog({
   if (showManualEntry) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
             <DialogTitle>Masukkan Detail Penjualan</DialogTitle>
             <DialogDescription>
               Masukkan harga jual dan tanggal penjualan untuk {itemName}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 pb-4">
             <div className="space-y-2">
               <Label htmlFor="manual-price">Harga Jual (Rp)</Label>
               <Input
@@ -188,15 +188,15 @@ export function SaleConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle>Konfirmasi Penjualan</DialogTitle>
           <DialogDescription>
             Apakah HP ini terjual hari ini dengan harga SRP?
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-4">
+        <div className="py-4 space-y-4 pb-4">
           <div className="rounded-lg bg-muted p-4">
             <div className="text-sm text-muted-foreground mb-1">Item:</div>
             <div className="font-semibold">{itemName}</div>

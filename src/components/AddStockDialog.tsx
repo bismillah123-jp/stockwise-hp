@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +72,16 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
     },
     enabled: !!selectedBrand
   });
+
+  // Auto-fill cost price with SRP when model is selected
+  useEffect(() => {
+    if (selectedModel && phoneModels) {
+      const model = phoneModels.find(m => m.id === selectedModel);
+      if (model && model.srp && model.srp > 0) {
+        setCostPrice(model.srp.toLocaleString('id-ID'));
+      }
+    }
+  }, [selectedModel, phoneModels]);
 
   const addStockMutation = useMutation({
     mutationFn: async () => {
@@ -163,15 +173,15 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle>Tambah Stok</DialogTitle>
           <DialogDescription>
             Tambah stok untuk tanggal yang dipilih.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4 pb-4">
           <div className="space-y-2">
             <Label>Tanggal</Label>
             <Popover>
@@ -259,9 +269,9 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Harga Modal (Opsional)</Label>
+            <Label>Harga Modal</Label>
             <Input
-              placeholder="Masukkan harga modal"
+              placeholder="Harga modal (auto-fill dari SRP)"
               value={costPrice}
               onChange={(e) => {
                 const numOnly = e.target.value.replace(/\D/g, '');
@@ -269,7 +279,9 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               }}
               inputMode="numeric"
             />
-            <p className="text-sm text-muted-foreground">Untuk perhitungan laba/rugi yang akurat</p>
+            <p className="text-sm text-muted-foreground">
+              Auto-terisi dari SRP, bisa diedit kalau harga beli berbeda
+            </p>
           </div>
 
           <div className="space-y-2">

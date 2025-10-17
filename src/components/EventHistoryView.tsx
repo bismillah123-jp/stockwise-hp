@@ -12,6 +12,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface EventHistoryViewProps {
+  selectedDate?: Date;
   imeiFilter?: string;
   limit?: number;
 }
@@ -26,13 +27,18 @@ const EVENT_TYPE_CONFIG = {
   koreksi: { label: 'Koreksi', color: 'bg-gray-500/10 text-gray-700 border-gray-500/20' },
 };
 
-export function EventHistoryView({ imeiFilter, limit = 100 }: EventHistoryViewProps) {
+export function EventHistoryView({ selectedDate = new Date(), imeiFilter, limit = 100 }: EventHistoryViewProps) {
   const [searchImei, setSearchImei] = useState(imeiFilter || "");
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
 
   const { data: events, isLoading } = useQuery({
-    queryKey: ['stock-events', searchImei, eventTypeFilter, limit],
+    queryKey: ['stock-events', searchImei, eventTypeFilter, selectedDate, limit],
     queryFn: async () => {
+      // Get date range - from selectedDate back 30 days
+      const thirtyDaysAgo = new Date(selectedDate);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const selectedDateStr = selectedDate.toISOString().split('T')[0];
+      
       let query = supabase
         .from('stock_events')
         .select(`
@@ -40,6 +46,8 @@ export function EventHistoryView({ imeiFilter, limit = 100 }: EventHistoryViewPr
           stock_locations(name),
           phone_models(brand, model, storage_capacity, color)
         `)
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+        .lte('date', selectedDateStr)
         .order('created_at', { ascending: false })
         .limit(limit);
 

@@ -296,12 +296,12 @@ export function StockDashboard() {
 
           {/* Event History View */}
           {activeTab === 'events' && (
-            <EventHistoryView />
+            <EventHistoryView selectedDate={date} />
           )}
 
           {/* Analytics View */}
           {activeTab === 'analytics' && (
-            <StockAnalytics />
+            <StockAnalytics selectedDate={date} />
           )}
 
           {/* Settings View */}

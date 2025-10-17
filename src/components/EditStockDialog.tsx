@@ -86,15 +86,15 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
           <DialogTitle>Edit Stok</DialogTitle>
           <DialogDescription>
             Perbarui detail untuk entri stok yang dipilih.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 pb-4">
           <div className="space-y-2">
             <Label>Model HP</Label>
             <Input
