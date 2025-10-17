@@ -265,7 +265,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               inputMode="numeric"
               required
             />
-            <p className="text-sm text-muted-foreground">1 IMEI = 1 unit stok</p>
+            <p className="text-sm text-muted-foreground">📱 1 IMEI = 1 unit stok</p>
           </div>
 
           <div className="space-y-2">
@@ -280,7 +280,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               inputMode="numeric"
             />
             <p className="text-sm text-muted-foreground">
-              Auto-terisi dari SRP, bisa diedit kalau harga beli berbeda
+              💡 Auto-terisi dari SRP, bisa diedit kalau harga beli berbeda
             </p>
           </div>
 

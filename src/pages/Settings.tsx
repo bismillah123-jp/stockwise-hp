@@ -92,14 +92,31 @@ const Settings = () => {
       }
 
       const flattenedData = data.map(entry => ({
-        Tanggal: entry.date, Lokasi: entry.stock_locations?.name || 'N/A', Merk: entry.phone_models?.brand || 'N/A',
-        Model: entry.phone_models?.model || 'N/A', Penyimpanan: entry.phone_models?.storage_capacity || 'N/A',
-        IMEI: entry.imei, Catatan: entry.notes, Stok_Pagi: entry.morning_stock, Masuk: entry.incoming,
-        Tambah_Stok: entry.add_stock, Return: entry.returns, Terjual: entry.sold,
-        Penyesuaian: entry.adjustment, Stok_Malam: entry.night_stock,
+        'Tanggal': entry.date,
+        'Lokasi': entry.stock_locations?.name || 'N/A',
+        'Merk': entry.phone_models?.brand || 'N/A',
+        'Model': entry.phone_models?.model || 'N/A',
+        'Penyimpanan': entry.phone_models?.storage_capacity || 'N/A',
+        'IMEI': entry.imei,
+        'Catatan': entry.notes || '',
+        'Stok Pagi': entry.morning_stock,
+        'Masuk': entry.incoming,
+        'Tambah Stok': entry.add_stock,
+        'Return': entry.returns,
+        'Terjual': entry.sold,
+        'Penyesuaian': entry.adjustment,
+        'Stok Malam': entry.night_stock,
       }));
 
-      const csv = Papa.unparse(flattenedData);
+      const csv = Papa.unparse(flattenedData, {
+        delimiter: ',',
+        header: true,
+        newline: '\n',
+        quotes: true,
+        quoteChar: '"',
+        escapeChar: '"',
+        skipEmptyLines: false
+      });
       const filename = `stock_export_${new Date().toISOString().split('T')[0]}.csv`;
       downloadCSV(csv, filename);
       toast({ title: "Ekspor Berhasil", description: `${data.length} baris data stok telah diekspor.` });
@@ -144,7 +161,22 @@ const Settings = () => {
     const errors: string[] = [];
 
     for (const [index, row] of parsedData.entries()) {
-      const { Tanggal, Lokasi, Merk, Model, Penyimpanan, IMEI } = row;
+      const { 
+        'Tanggal': Tanggal, 
+        'Lokasi': Lokasi, 
+        'Merk': Merk, 
+        'Model': Model, 
+        'Penyimpanan': Penyimpanan, 
+        'IMEI': IMEI,
+        'Catatan': Catatan,
+        'Stok Pagi': StokPagi,
+        'Masuk': Masuk,
+        'Tambah Stok': TambahStok,
+        'Return': Return,
+        'Terjual': Terjual,
+        'Penyesuaian': Penyesuaian,
+        'Stok Malam': StokMalam
+      } = row;
 
       if (!Tanggal || !Lokasi || !Merk || !Model || !IMEI) {
         errors.push(`Baris ${index + 2}: Kolom wajib (Tanggal, Lokasi, Merk, Model, IMEI) tidak lengkap.`);
@@ -166,10 +198,13 @@ const Settings = () => {
 
       validEntries.push({
         date: Tanggal, location_id: locationId, phone_model_id: modelId, imei: IMEI,
-        morning_stock: parseInt(row.Stok_Pagi, 10) || 1,
-        incoming: parseInt(row.Masuk, 10) || 0, add_stock: parseInt(row.Tambah_Stok, 10) || 0,
-        returns: parseInt(row.Return, 10) || 0, sold: parseInt(row.Terjual, 10) || 0,
-        adjustment: parseInt(row.Penyesuaian, 10) || 0, notes: row.Catatan || '',
+        morning_stock: parseInt(StokPagi, 10) || 1,
+        incoming: parseInt(Masuk, 10) || 0, 
+        add_stock: parseInt(TambahStok, 10) || 0,
+        returns: parseInt(Return, 10) || 0, 
+        sold: parseInt(Terjual, 10) || 0,
+        adjustment: parseInt(Penyesuaian, 10) || 0, 
+        notes: Catatan || '',
       });
     }
 

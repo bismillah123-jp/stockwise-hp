@@ -1,16 +1,15 @@
-import { BarChart3, Package, TrendingUp, Settings as SettingsIcon, History } from "lucide-react";
+import { BarChart3, Package, TrendingUp, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MobileNavigationProps {
-  activeTab: 'dashboard' | 'table' | 'analytics' | 'events' | 'settings';
-  onTabChange: (tab: 'dashboard' | 'table' | 'analytics' | 'events' | 'settings') => void;
+  activeTab: 'dashboard' | 'table' | 'analytics' | 'settings';
+  onTabChange: (tab: 'dashboard' | 'table' | 'analytics' | 'settings') => void;
 }
 
 export function MobileNavigation({ activeTab, onTabChange }: MobileNavigationProps) {
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: BarChart3 },
     { id: 'table', label: 'Stok', icon: Package },
-    { id: 'events', label: 'Event', icon: History },
     { id: 'analytics', label: 'Stats', icon: TrendingUp },
     { id: 'settings', label: 'Setting', icon: SettingsIcon },
   ];

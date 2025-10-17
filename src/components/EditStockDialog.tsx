@@ -71,9 +71,9 @@ export function EditStockDialog({ open, onOpenChange, stockEntry }: EditStockDia
       queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
       onOpenChange(false);
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       toast({
-        title: "Gagal",
+        title: "Error",
         description: error.message,
         variant: "destructive",
       });

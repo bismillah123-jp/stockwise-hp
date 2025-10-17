@@ -17,7 +17,6 @@ import Settings from "@/pages/Settings";
 import { ThemeToggle } from "./ThemeToggle";
 import { MobileNavigation } from "./MobileNavigation";
 import { FabMenu } from "./FabMenu";
-import { EventHistoryView } from "./EventHistoryView";
 
 interface LocationData {
   morning_stock: number;
@@ -42,7 +41,7 @@ interface DashboardStats {
 }
 
 export function StockDashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics' | 'events' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'table' | 'analytics' | 'settings'>('dashboard');
   const [date, setDate] = useState<Date>(new Date());
   const { toast } = useToast();
 
@@ -173,7 +172,6 @@ export function StockDashboard() {
             {[
               { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
               { id: 'table', label: 'Data Stok', icon: Package },
-              { id: 'events', label: 'Riwayat Event', icon: PackageOpen },
               { id: 'analytics', label: 'Statistik', icon: TrendingUp },
               { id: 'settings', label: 'Pengaturan', icon: SettingsIcon },
             ].map((tab) => {
@@ -294,10 +292,6 @@ export function StockDashboard() {
             <StockTable selectedDate={date} />
           )}
 
-          {/* Event History View */}
-          {activeTab === 'events' && (
-            <EventHistoryView selectedDate={date} />
-          )}
 
           {/* Analytics View */}
           {activeTab === 'analytics' && (
