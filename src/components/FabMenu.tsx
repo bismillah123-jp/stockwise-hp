@@ -1,13 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Truck, Smartphone, MapPin, Tags, ListChecks } from 'lucide-react';
+import { Plus, Truck, Smartphone, MapPin, Tags } from 'lucide-react';
 import { useState } from 'react';
 import { AddStockDialog } from './AddStockDialog';
 import { IncomingStockDialog } from './IncomingStockDialog';
 import { AddPhoneModelDialog } from './AddPhoneModelDialog';
 import { ManageBrandsDialog } from './ManageBrandsDialog';
 import { AddLocationDialog } from './AddLocationDialog';
-import { UnifiedTransactionDialog } from './UnifiedTransactionDialog';
 
 export function FabMenu() {
   const [dialog, setDialog] = useState<string | null>(null);
@@ -19,12 +18,6 @@ export function FabMenu() {
   };
 
   const actions = [
-    {
-      label: '🆕 Transaksi Stok',
-      icon: ListChecks,
-      dialog: 'unifiedTransaction',
-      badge: 'NEW',
-    },
     {
       label: 'Tambah Stok',
       icon: Plus,
@@ -67,16 +60,11 @@ export function FabMenu() {
                 <Button
                   key={action.dialog}
                   variant="ghost"
-                  className="flex justify-start items-center gap-4 px-4 py-2 relative"
+                  className="flex justify-start items-center gap-4 px-4 py-2"
                   onClick={() => handleActionClick(action.dialog)}
                 >
                   <action.icon className="h-5 w-5" />
                   <span>{action.label}</span>
-                  {action.badge && (
-                    <span className="absolute top-1 right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                      {action.badge}
-                    </span>
-                  )}
                 </Button>
               ))}
             </div>
@@ -84,7 +72,6 @@ export function FabMenu() {
         </Popover>
       </div>
 
-      {dialog === 'unifiedTransaction' && <UnifiedTransactionDialog open={true} onOpenChange={() => setDialog(null)} />}
       {dialog === 'addStock' && <AddStockDialog open={true} onOpenChange={() => setDialog(null)} />}
       {dialog === 'incomingStock' && <IncomingStockDialog open={true} onOpenChange={() => setDialog(null)} />}
       {dialog === 'addPhoneModel' && <AddPhoneModelDialog open={true} onOpenChange={() => setDialog(null)} />}
