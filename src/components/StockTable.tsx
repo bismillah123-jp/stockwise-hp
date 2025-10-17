@@ -183,16 +183,29 @@ export function StockTable({ selectedDate }: StockTableProps) {
       const costBasis = saleData.costPrice > 0 ? saleData.costPrice : saleData.srp;
       const profitLoss = saleData.price - costBasis;
       
-      const { error } = await supabase
-        .from('stock_entries')
-        .update({ 
-          sold: entry.sold + 1,
-          selling_price: saleData.price,
-          sale_date: format(saleData.date, 'yyyy-MM-dd'),
-          profit_loss: profitLoss,
-        })
-        .eq('id', entry.id);
-      if (error) throw error;
+      // 1. Write to stock_events (event-sourcing primary source)
+      const { error: eventError } = await supabase
+        .from('stock_events')
+        .insert({
+          date: format(saleData.date, 'yyyy-MM-dd'),
+          imei: entry.imei || '',
+          location_id: entry.stock_locations.id,
+          phone_model_id: entry.phone_models.id,
+          event_type: 'laku',
+          qty: 1,
+          notes: `Terjual - Harga: Rp ${saleData.price.toLocaleString('id-ID')}`,
+          metadata: {
+            selling_price: saleData.price,
+            srp: saleData.srp,
+            cost_price: costBasis,
+            profit_loss: profitLoss
+          }
+        });
+      
+      if (eventError) throw new Error(`Gagal menyimpan event: ${eventError.message}`);
+
+      // 2. Cascade recalculation happens automatically via database trigger
+      // stock_entries will be updated automatically
     },
     onSuccess: (_, { saleData }) => {
       const costBasis = saleData.costPrice > 0 ? saleData.costPrice : saleData.srp;
@@ -207,6 +220,8 @@ export function StockTable({ selectedDate }: StockTableProps) {
         variant: profitLoss >= 0 ? "default" : "destructive"
       });
       queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-events'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
     onError: (error) => {
       toast({ title: "Error", description: `Gagal menandai sebagai terjual: ${error.message}`, variant: "destructive" });

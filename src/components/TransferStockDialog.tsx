@@ -36,40 +36,43 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
       const transferQty = 1;
       const sourceLocationName = stockEntry.stock_locations.name;
       const destLocation = locations?.find(l => l.id === destinationId);
-      if (!destLocation) throw new Error("Destination location not found.");
+      if (!destLocation) throw new Error("Lokasi tujuan tidak ditemukan.");
       const destLocationName = destLocation.name;
 
-      // 1. Mark the source entry as sold = 1 (transferred out)
-      // This properly removes it from the source location
-      const { error: updateSourceError } = await supabase
-        .from('stock_entries')
-        .update({
-          sold: 1,
-          notes: `${stockEntry.notes || ''} | Transferred Out to ${destLocationName}`.trim(),
-        })
-        .eq('id', stockEntry.id);
-
-      if (updateSourceError) throw new Error(`Failed to update source stock: ${updateSourceError.message}`);
-
-      // 2. Create a new entry at the destination with the same IMEI
-      // This represents the incoming stock at the destination
-      const { error: createDestError } = await supabase
-        .from('stock_entries')
+      // 1. Write transfer_out event to stock_events (source location)
+      const { error: transferOutError } = await supabase
+        .from('stock_events')
         .insert({
           date: stockEntry.date,
+          imei: stockEntry.imei,
+          location_id: stockEntry.location_id,
+          phone_model_id: stockEntry.phone_models.id,
+          event_type: 'transfer_out',
+          qty: transferQty,
+          notes: `Transfer ke ${destLocationName}`,
+          metadata: { destination_location_id: destinationId, destination_location_name: destLocationName }
+        });
+
+      if (transferOutError) throw new Error(`Gagal mencatat transfer keluar: ${transferOutError.message}`);
+
+      // 2. Write transfer_in event to stock_events (destination location)
+      const { error: transferInError } = await supabase
+        .from('stock_events')
+        .insert({
+          date: stockEntry.date,
+          imei: stockEntry.imei,
           location_id: destinationId,
           phone_model_id: stockEntry.phone_models.id,
-          imei: stockEntry.imei, // Transfer the IMEI to destination
-          morning_stock: 0, // Didn't exist in morning at destination
-          incoming: transferQty, // Came in via transfer
-          add_stock: 0,
-          returns: 0,
-          sold: 0,
-          adjustment: 0,
-          notes: `Transferred In from ${sourceLocationName}`,
+          event_type: 'transfer_in',
+          qty: transferQty,
+          notes: `Transfer dari ${sourceLocationName}`,
+          metadata: { source_location_id: stockEntry.location_id, source_location_name: sourceLocationName }
         });
       
-      if (createDestError) throw new Error(`Failed to create destination stock: ${createDestError.message}`);
+      if (transferInError) throw new Error(`Gagal mencatat transfer masuk: ${transferInError.message}`);
+
+      // 3. Cascade recalculation happens automatically via database trigger
+      // Both source and destination stock_entries will be updated automatically
     },
     onSuccess: () => {
       toast({ title: "Sukses", description: "Stok berhasil ditransfer." });

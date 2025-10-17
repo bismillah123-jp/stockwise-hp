@@ -111,41 +111,29 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
-      // Incoming HP: HP yang datang di tengah hari
-      // morning_stock = 0 (tidak ada di pagi hari), incoming = 1
-      // night_stock = 0 + 1 + 0 + 0 + 0 - 0 = 1 (via trigger)
-      const { data: newEntry, error: insertError } = await supabase
-        .from('stock_entries')
+      // 1. Write to stock_events (event-sourcing primary source)
+      const { error: eventError } = await supabase
+        .from('stock_events')
         .insert({
           date: date,
+          imei: imei.trim(),
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          morning_stock: 0, // Tidak ada di pagi hari
-          incoming: quantityNum, // HP datang di tengah hari
-          imei: imei.trim(),
+          event_type: 'masuk', // Incoming stock
+          qty: quantityNum,
           notes: notes || null,
-          cost_price: costPriceNum > 0 ? costPriceNum : null,
-        })
-        .select()
-        .single();
+          metadata: costPriceNum > 0 ? { cost_price: costPriceNum } : {}
+        });
 
-      if (insertError) {
-        throw new Error(`Gagal mencatat HP datang: ${insertError.message}`);
+      if (eventError) {
+        throw new Error(`Gagal menyimpan event: ${eventError.message}`);
       }
 
-      // Log the transaction if the new entry was created successfully
-      if (newEntry) {
-        await supabase
-          .from('stock_transactions_log')
-          .insert({
-            stock_entry_id: newEntry.id,
-            transaction_type: 'incoming',
-            quantity: quantityNum,
-            previous_night_stock: 0, // HP baru datang
-            new_night_stock: newEntry.night_stock, // Should be 1 (incoming only)
-            notes: `HP Datang: ${notes || 'Tanpa catatan'}`
-          });
-      }
+      // 2. Cascade recalculation happens automatically via database trigger
+      // stock_entries will be updated automatically by cascade_recalc_stock()
+      
+      // Note: Old direct insert to stock_entries removed - now calculated from events
+      // This ensures consistency and enables retroactive corrections
     },
     onSuccess: () => {
       toast({
