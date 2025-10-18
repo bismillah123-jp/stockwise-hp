@@ -204,7 +204,20 @@ export function StockTable({ selectedDate }: StockTableProps) {
       
       if (eventError) throw new Error(`Gagal menyimpan event: ${eventError.message}`);
 
-      // 2. Cascade recalculation happens automatically via database trigger
+      // 2. Update stock_entries with selling price and profit/loss data
+      const { error: updateError } = await supabase
+        .from('stock_entries')
+        .update({
+          selling_price: saleData.price,
+          sale_date: format(saleData.date, 'yyyy-MM-dd'),
+          profit_loss: profitLoss,
+          cost_price: costBasis
+        })
+        .eq('id', entry.id);
+
+      if (updateError) throw new Error(`Gagal update data penjualan: ${updateError.message}`);
+
+      // 3. Cascade recalculation happens automatically via database trigger
       // stock_entries will be updated automatically
     },
     onSuccess: (_, { saleData }) => {

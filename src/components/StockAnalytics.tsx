@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, TrendingUp, Package, Clock, X } from "lucide-react";
+import { BarChart, TrendingUp, Package, Clock, X, DollarSign } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, AreaChart, Area, Sector } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInDays } from "date-fns";
@@ -9,7 +9,16 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const COLORS = ['hsl(346, 77%, 50%)', 'hsl(142, 76%, 36%)', 'hsl(48, 96%, 50%)', 'hsl(200, 100%, 50%)', 'hsl(260, 100%, 65%)'];
+const COLORS = [
+  'hsl(142, 76%, 36%)',   // Green
+  'hsl(200, 100%, 50%)',  // Blue  
+  'hsl(346, 77%, 50%)',   // Pink
+  'hsl(48, 96%, 50%)',    // Yellow
+  'hsl(260, 100%, 65%)',  // Purple
+  'hsl(0, 84%, 60%)',     // Red
+  'hsl(24, 100%, 50%)',   // Orange
+  'hsl(120, 100%, 25%)'   // Dark Green
+];
 
 // Render active shape for pie chart
 const renderActiveShape = (props: any) => {
@@ -65,7 +74,7 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
         supabase.from('stock_entries').select('sold, phone_models(brand)').gte('date', thirtyDaysAgo.toISOString()),
         supabase.from('stock_entries').select('night_stock').eq('date', today).gt('night_stock', 0),
         supabase.from('stock_entries').select('date, phone_models(model)').eq('date', today).gt('night_stock', 0).order('date', { ascending: true }).limit(1),
-        supabase.from('stock_entries').select('selling_price, profit_loss, sold').eq('date', today)
+        supabase.from('stock_entries').select('selling_price, profit_loss, sold').eq('date', today).gt('sold', 0)
       ]);
 
       if (salesError || stockError || oldestError || todayError) {
@@ -212,8 +221,45 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
     </div>
   );
 
+  // Add custom CSS animations
+  const chartStyles = `
+    @keyframes chartFadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes chartScaleIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .chart-container {
+      animation: chartFadeIn 0.6s ease-out;
+    }
+    
+    .chart-area {
+      animation: chartScaleIn 0.8s ease-out;
+    }
+    
+    .chart-pie {
+      animation: chartScaleIn 1s ease-out;
+    }
+    
+    .hover-glow:hover {
+      filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
+      transition: all 0.3s ease;
+    }
+  `;
+
   return (
-    <div className="space-y-6">
+    <>
+      <style>{chartStyles}</style>
+      <div className="space-y-6">
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="animate-fade-in hover-scale transition-all duration-300">
@@ -243,6 +289,36 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
             {kpiLoading ? <AnalyticsLoader /> : (
               <div className="text-2xl font-bold animate-scale-in">
                 {kpiStats?.bestSellingBrand ?? <span className="text-sm text-muted-foreground">Belum ada penjualan</span>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        {/* Revenue Card */}
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.3s' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendapatan Hari Ini</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {kpiLoading ? <AnalyticsLoader /> : (
+              <div className="text-2xl font-bold animate-scale-in text-green-600">
+                Rp {(kpiStats?.todayRevenue || 0).toLocaleString('id-ID')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        {/* Profit/Loss Card */}
+        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.4s' }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Laba/Rugi Hari Ini</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {kpiLoading ? <AnalyticsLoader /> : (
+              <div className={`text-2xl font-bold animate-scale-in ${(kpiStats?.todayProfitLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                Rp {(kpiStats?.todayProfitLoss || 0).toLocaleString('id-ID')}
               </div>
             )}
           </CardContent>
@@ -294,55 +370,88 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
       {/* Charts and Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card className="animate-fade-in overflow-hidden">
-            <CardHeader>
-              <CardTitle>Grafik Penjualan Harian</CardTitle>
+          <Card className="animate-fade-in overflow-hidden bg-gradient-to-br from-card to-card/50 border-0 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Grafik Penjualan Harian
+                <span className="text-sm font-normal text-muted-foreground">(30 hari terakhir)</span>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="h-[350px] p-6">
               {dailySalesLoading ? <AnalyticsLoader /> : (
                 dailySalesData && dailySalesData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dailySalesData}>
+                  <ResponsiveContainer width="100%" height="100%" className="chart-container">
+                    <AreaChart data={dailySalesData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }} className="chart-area">
                       <defs>
                         <linearGradient id="colorPenjualan" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(346, 77%, 50%)" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="hsl(346, 77%, 50%)" stopOpacity={0.1}/>
+                          <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.8}/>
+                          <stop offset="50%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="colorPenjualanStroke" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="hsl(142, 76%, 36%)"/>
+                          <stop offset="100%" stopColor="hsl(200, 100%, 50%)"/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <CartesianGrid 
+                        strokeDasharray="3 3" 
+                        opacity={0.2} 
+                        stroke="hsl(var(--muted-foreground))"
+                        vertical={false}
+                      />
                       <XAxis 
                         dataKey="date" 
-                        tick={{ fontSize: 12 }}
-                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        tickLine={{ stroke: 'hsl(var(--border))' }}
+                        interval="preserveStartEnd"
                       />
                       <YAxis 
                         allowDecimals={false}
-                        tick={{ fontSize: 12 }}
-                        stroke="hsl(var(--muted-foreground))"
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        axisLine={{ stroke: 'hsl(var(--border))' }}
+                        tickLine={{ stroke: 'hsl(var(--border))' }}
                       />
                       <RechartsTooltip 
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-3">
+                                <p className="text-sm font-medium text-foreground mb-1">{label}</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-blue-500"></div>
+                                  <p className="text-sm text-muted-foreground">
+                                    Penjualan: <span className="font-semibold text-foreground">{payload[0].value} unit</span>
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
                         }}
-                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '5 5' }}
                       />
                       <Area 
                         type="monotone" 
                         dataKey="Penjualan" 
-                        stroke="hsl(346, 77%, 50%)" 
+                        stroke="url(#colorPenjualanStroke)" 
                         strokeWidth={3}
                         fill="url(#colorPenjualan)"
-                        animationDuration={1000}
+                        animationDuration={1500}
                         animationBegin={0}
+                        dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, stroke: 'hsl(142, 76%, 36%)', strokeWidth: 2, fill: 'white' }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">Belum ada data penjualan</p>
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                      <TrendingUp className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground text-lg">Belum ada data penjualan</p>
+                    <p className="text-sm text-muted-foreground mt-1">Mulai jual HP untuk melihat grafik</p>
                   </div>
                 )
               )}
@@ -350,41 +459,63 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
           </Card>
         </div>
         <div>
-          <Card className="animate-fade-in overflow-hidden" style={{ animationDelay: '0.1s' }}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Komposisi Stok</CardTitle>
-              {selectedBrand && (
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    setSelectedBrand(null);
-                    setActiveIndex(undefined);
-                  }}
-                  className="h-8"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Reset
-                </Button>
-              )}
+          <Card className="animate-fade-in overflow-hidden bg-gradient-to-br from-card to-card/50 border-0 shadow-xl" style={{ animationDelay: '0.1s' }}>
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+              <div className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Package className="h-5 w-5 text-primary" />
+                  Komposisi Stok
+                </CardTitle>
+                {selectedBrand && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedBrand(null);
+                      setActiveIndex(undefined);
+                    }}
+                    className="h-8 hover:bg-primary/10 transition-colors"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Reset
+                  </Button>
+                )}
+              </div>
             </CardHeader>
-            <CardContent className="h-[400px]">
+            <CardContent className="h-[400px] p-6">
               {compositionLoading ? <AnalyticsLoader /> : (
                 stockCompositionData && stockCompositionData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                  <ResponsiveContainer width="100%" height="100%" className="chart-container">
+                    <PieChart className="chart-pie">
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                          <feMerge> 
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
                       <Pie 
                         data={stockCompositionData} 
                         dataKey="value" 
                         nameKey="name" 
                         cx="50%" 
-                        cy="40%" 
-                        innerRadius={60}
-                        outerRadius={90} 
-                        label={({ name, value }) => `${name}: ${value}`}
-                        labelLine={{ stroke: 'hsl(var(--foreground))', strokeWidth: 1 }}
+                        cy="45%" 
+                        innerRadius={70}
+                        outerRadius={110} 
+                        label={({ name, value, percent }) => 
+                          `${name}: ${value} (${(percent * 100).toFixed(1)}%)`
+                        }
+                        labelLine={false}
+                        labelStyle={{ 
+                          fontSize: '11px', 
+                          fontWeight: '500',
+                          fill: 'hsl(var(--foreground))',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                        }}
                         animationBegin={0}
-                        animationDuration={800}
+                        animationDuration={1200}
                         activeIndex={activeIndex}
                         activeShape={renderActiveShape}
                         onClick={(data, index) => {
@@ -397,19 +528,63 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
                           <Cell 
                             key={`cell-${index}`} 
                             fill={COLORS[index % COLORS.length]}
-                            className="transition-all duration-200"
+                            className="transition-all duration-300 hover:opacity-80 hover-glow"
+                            filter={activeIndex === index ? "url(#glow)" : "none"}
                           />
                         ))}
                       </Pie>
+                      <RechartsTooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0];
+                            return (
+                              <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: data.payload.fill }}
+                                  ></div>
+                                  <p className="text-sm font-medium text-foreground">{data.name}</p>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Stok: <span className="font-semibold text-foreground">{data.value} unit</span>
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Persentase: <span className="font-semibold text-foreground">
+                                    {((data.payload.percent || 0) * 100).toFixed(1)}%
+                                  </span>
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
                       <RechartsLegend 
-                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                        wrapperStyle={{ 
+                          fontSize: '12px', 
+                          paddingTop: '15px',
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
                         iconType="circle"
+                        formatter={(value, entry) => (
+                          <span style={{ color: entry.color, fontWeight: '500' }}>
+                            {value}
+                          </span>
+                        )}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">Tidak ada stok tersedia</p>
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                      <Package className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground text-lg">Tidak ada stok tersedia</p>
+                    <p className="text-sm text-muted-foreground mt-1">Tambah stok untuk melihat komposisi</p>
                   </div>
                 )
               )}
@@ -503,6 +678,7 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
