@@ -105,17 +105,18 @@ export function IncomingStockDialog({ open, onOpenChange }: IncomingStockDialogP
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Check if IMEI already exists
+      // Check if IMEI already exists in stock_events (event-sourcing source of truth)
       const { data: existingImei, error: checkError } = await supabase
-        .from('stock_entries')
-        .select('id')
+        .from('stock_events')
+        .select('id, event_type, date')
         .eq('imei', imei.trim())
+        .in('event_type', ['masuk', 'retur_in']) // Only check incoming events
         .maybeSingle();
 
       if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
       
       if (existingImei) {
-        throw new Error('Stok dengan IMEI ini sudah terdaftar di sistem');
+        throw new Error(`Stok dengan IMEI ini sudah terdaftar di sistem (${existingImei.event_type} pada ${existingImei.date})`);
       }
 
       // Parse cost price - remove dots and convert to number

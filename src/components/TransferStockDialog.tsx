@@ -58,11 +58,11 @@ export function TransferStockDialog({ open, onOpenChange, stockEntry }: Transfer
       // 2. Write transfer_in event to stock_events (destination location)
       const { error: transferInError } = await supabase
         .from('stock_events')
-        .insert({
-          date: stockEntry.date,
+          .insert({
+            date: stockEntry.date,
           imei: stockEntry.imei,
-          location_id: destinationId,
-          phone_model_id: stockEntry.phone_models.id,
+            location_id: destinationId,
+            phone_model_id: stockEntry.phone_models.id,
           event_type: 'transfer_in',
           qty: transferQty,
           notes: `Transfer dari ${sourceLocationName}`,

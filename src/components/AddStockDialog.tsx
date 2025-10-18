@@ -105,17 +105,19 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // Check if IMEI already exists
+      // For stock correction, we need to check if the IMEI exists in the system
+      // This is different from new stock arrival - we're correcting existing stock
       const { data: existingImei, error: checkError } = await supabase
-        .from('stock_entries')
-        .select('id')
+        .from('stock_events')
+        .select('id, event_type, date')
         .eq('imei', imei.trim())
+        .in('event_type', ['masuk', 'retur_in']) // Check if IMEI was ever added to system
         .maybeSingle();
 
       if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
       
-      if (existingImei) {
-        throw new Error('Stok dengan IMEI ini sudah terdaftar di sistem');
+      if (!existingImei) {
+        throw new Error(`IMEI ini belum terdaftar di sistem. Gunakan "HP Datang" untuk menambah stok baru.`);
       }
 
       // Parse cost price - remove dots and convert to number
@@ -129,7 +131,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           imei: imei.trim(),
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          event_type: 'masuk', // Stock arrival/addition
+          event_type: 'koreksi', // Stock correction/adjustment
           qty: quantityNum,
           notes: notes || null,
           metadata: costPriceNum > 0 ? { cost_price: costPriceNum } : {}
@@ -175,9 +177,9 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
-          <DialogTitle>Tambah Stok</DialogTitle>
+          <DialogTitle>Koreksi Stok</DialogTitle>
           <DialogDescription>
-            Tambah stok untuk tanggal yang dipilih.
+            Koreksi stok yang sudah ada di sistem untuk tanggal yang dipilih.
           </DialogDescription>
         </DialogHeader>
         
@@ -259,13 +261,13 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           <div className="space-y-2">
             <Label>IMEI *</Label>
             <Input
-              placeholder="Masukkan IMEI (wajib)"
+              placeholder="Masukkan IMEI yang sudah ada di sistem"
               value={imei}
               onChange={(e) => setImei(e.target.value)}
               inputMode="numeric"
               required
             />
-            <p className="text-sm text-muted-foreground">📱 1 IMEI = 1 unit stok</p>
+            <p className="text-sm text-muted-foreground">📱 IMEI harus sudah terdaftar di sistem (gunakan "HP Datang" untuk IMEI baru)</p>
           </div>
 
           <div className="space-y-2">
@@ -303,7 +305,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               disabled={addStockMutation.isPending}
               className="flex-1"
             >
-              {addStockMutation.isPending ? "Memproses..." : "Tambah Stok"}
+              {addStockMutation.isPending ? "Memproses..." : "Koreksi Stok"}
             </Button>
           </div>
         </div>
