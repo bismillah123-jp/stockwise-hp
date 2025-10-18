@@ -27,6 +27,7 @@ import { Search, Filter, Edit, Eye, ArrowRightLeft, Trash2, CheckCircle } from "
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditStockDialog } from "./EditStockDialog";
+import { EditStockInline } from "./EditStockInline";
 import { TransferStockDialog } from "./TransferStockDialog";
 import { SaleConfirmationDialog } from "./SaleConfirmationDialog";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<StockEntry | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -334,6 +336,21 @@ export function StockTable({ selectedDate }: StockTableProps) {
                 <TableBody>
                   {stockEntries?.map((entry) => {
                     const status = getStockStatus(entry);
+                    const isEditing = editingEntryId === entry.id;
+                    
+                    if (isEditing) {
+                      return (
+                        <TableRow key={entry.id} className="hover:bg-muted/20 transition-colors">
+                          <TableCell colSpan={9} className="p-0">
+                            <EditStockInline
+                              stockEntry={entry}
+                              onCancel={() => setEditingEntryId(null)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                    
                     return (
                       <TableRow key={entry.id} className="hover:bg-muted/20 transition-colors">
                         <TableCell className="font-medium">
@@ -399,7 +416,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleTransferClick(entry)} disabled={entry.night_stock === 0}>
                             <ArrowRightLeft className="h-4 w-4 text-blue-500" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(entry)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingEntryId(entry.id)}>
                             <Edit className="h-4 w-4 text-yellow-500" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteClick(entry)}>

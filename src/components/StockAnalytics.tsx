@@ -352,19 +352,6 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
             )}
           </CardContent>
         </Card>
-        <Card className="animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: '0.5s' }}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Uang Hari Ini</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {kpiLoading ? <AnalyticsLoader /> : (
-              <div className="text-2xl font-bold animate-scale-in">
-                Rp {(kpiStats?.todayRevenue ?? 0).toLocaleString('id-ID')}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Charts and Tables */}
@@ -501,15 +488,15 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
                         dataKey="value" 
                         nameKey="name" 
                         cx="50%" 
-                        cy="45%" 
-                        innerRadius={70}
-                        outerRadius={110} 
+                        cy="50%" 
+                        innerRadius={60}
+                        outerRadius={100} 
                         label={({ name, value, percent }) => 
-                          `${name}: ${value} (${(percent * 100).toFixed(1)}%)`
+                          value > 0 ? `${name}: ${value}` : ''
                         }
                         labelLine={false}
                         labelStyle={{ 
-                          fontSize: '11px', 
+                          fontSize: '10px', 
                           fontWeight: '500',
                           fill: 'hsl(var(--foreground))',
                           textShadow: '0 1px 2px rgba(0,0,0,0.1)'
@@ -562,16 +549,26 @@ export function StockAnalytics({ selectedDate = new Date() }: StockAnalyticsProp
                       />
                       <RechartsLegend 
                         wrapperStyle={{ 
-                          fontSize: '12px', 
-                          paddingTop: '15px',
+                          fontSize: '11px', 
+                          paddingTop: '20px',
                           display: 'flex',
                           flexWrap: 'wrap',
                           justifyContent: 'center',
-                          gap: '8px'
+                          gap: '12px',
+                          maxHeight: '80px',
+                          overflow: 'hidden'
                         }}
                         iconType="circle"
                         formatter={(value, entry) => (
-                          <span style={{ color: entry.color, fontWeight: '500' }}>
+                          <span style={{ 
+                            color: entry.color, 
+                            fontWeight: '500',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '80px',
+                            display: 'inline-block'
+                          }}>
                             {value}
                           </span>
                         )}

@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Callback from "./pages/Callback";
 import Settings from "./pages/Settings";
 import { supabase } from "./integrations/supabase/client";
+import { useRealtimeSubscription } from "./hooks/useRealtimeSubscription";
 import type { Session } from "@supabase/supabase-js";
 
 const App = () => {
@@ -16,6 +17,9 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Enable realtime subscriptions
+  useRealtimeSubscription();
 
   useEffect(() => {
     const getSession = async () => {

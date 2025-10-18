@@ -57,8 +57,28 @@ export function AddPhoneModelDialog({ open, onOpenChange }: AddPhoneModelDialogP
 
   const addModelMutation = useMutation({
     mutationFn: async (dataToInsert: { brand: string; model: string; storage_capacity: string; srp: number; }) => {
+      // Check if combination already exists
+      const { data: existingModel, error: checkError } = await supabase
+        .from('phone_models')
+        .select('id, brand, model, storage_capacity, color')
+        .eq('brand', dataToInsert.brand)
+        .eq('model', dataToInsert.model)
+        .eq('storage_capacity', dataToInsert.storage_capacity)
+        .maybeSingle();
+
+      if (checkError) throw new Error(`Gagal memeriksa model: ${checkError.message}`);
+      
+      if (existingModel) {
+        throw new Error(`Model ${dataToInsert.brand} ${dataToInsert.model} ${dataToInsert.storage_capacity} sudah ada di sistem`);
+      }
+
       const { error } = await supabase.from('phone_models').insert(dataToInsert);
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          throw new Error(`Model ${dataToInsert.brand} ${dataToInsert.model} ${dataToInsert.storage_capacity} sudah ada di sistem`);
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({ title: 'Model HP berhasil ditambahkan' });
