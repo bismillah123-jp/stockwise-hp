@@ -105,6 +105,32 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
+      // Ensure base stock_entries row exists to avoid NULL morning_stock during cascade
+      const { error: seedError } = await supabase
+        .from('stock_entries')
+        .upsert(
+          {
+            date,
+            location_id: selectedLocation,
+            phone_model_id: selectedModel,
+            morning_stock: 0,
+            incoming: 0,
+            sold: 0,
+            returns: 0,
+            adjustment: 0,
+            night_stock: 0
+          },
+          { onConflict: 'date,location_id,phone_model_id', ignoreDuplicates: false }
+        );
+
+      if (seedError) {
+        // Continue if conflict or harmless errors occur; the row may already exist
+        const allowed = ['duplicate key value violates unique constraint'];
+        if (!allowed.some(msg => seedError.message?.includes(msg))) {
+          throw new Error(`Gagal menyiapkan entri stok: ${seedError.message}`);
+        }
+      }
+
       // Stock correction no longer requires prior "HP Datang" entry
 
       // Parse cost price - remove dots and convert to number
