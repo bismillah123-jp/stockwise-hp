@@ -105,20 +105,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const date = format(selectedDate, "yyyy-MM-dd");
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
-      // For stock correction, we need to check if the IMEI exists in the system
-      // This is different from new stock arrival - we're correcting existing stock
-      const { data: existingImei, error: checkError } = await supabase
-        .from('stock_events')
-        .select('id, event_type, date')
-        .eq('imei', imei.trim())
-        .in('event_type', ['masuk', 'retur_in']) // Check if IMEI was ever added to system
-        .maybeSingle();
-
-      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
-      
-      if (!existingImei) {
-        throw new Error(`IMEI ini belum terdaftar di sistem. Gunakan "HP Datang" untuk menambah stok baru.`);
-      }
+      // Stock correction no longer requires prior "HP Datang" entry
 
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
@@ -261,13 +248,13 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           <div className="space-y-2">
             <Label>IMEI *</Label>
             <Input
-              placeholder="Masukkan IMEI yang sudah ada di sistem"
+              placeholder="Masukkan IMEI (baru atau sudah ada)"
               value={imei}
               onChange={(e) => setImei(e.target.value)}
               inputMode="numeric"
               required
             />
-            <p className="text-sm text-muted-foreground">📱 IMEI harus sudah terdaftar di sistem (gunakan "HP Datang" untuk IMEI baru)</p>
+            <p className="text-sm text-muted-foreground">📱 Bisa koreksi untuk IMEI baru maupun yang sudah ada</p>
           </div>
 
           <div className="space-y-2">
