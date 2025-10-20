@@ -106,10 +106,22 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
       // Ensure base stock_entries row exists to avoid NULL morning_stock during cascade
-      const { error: seedError } = await supabase
+      const { data: existingEntry, error: findSeedError } = await supabase
         .from('stock_entries')
-        .upsert(
-          {
+        .select('id')
+        .eq('date', date)
+        .eq('location_id', selectedLocation)
+        .eq('phone_model_id', selectedModel)
+        .maybeSingle();
+
+      if (findSeedError) {
+        throw new Error(`Gagal memeriksa entri stok: ${findSeedError.message}`);
+      }
+
+      if (!existingEntry) {
+        const { error: insertSeedError } = await supabase
+          .from('stock_entries')
+          .insert({
             date,
             location_id: selectedLocation,
             phone_model_id: selectedModel,
@@ -119,15 +131,10 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
             returns: 0,
             adjustment: 0,
             night_stock: 0
-          },
-          { onConflict: 'date,location_id,phone_model_id', ignoreDuplicates: false }
-        );
+          });
 
-      if (seedError) {
-        // Continue if conflict or harmless errors occur; the row may already exist
-        const allowed = ['duplicate key value violates unique constraint'];
-        if (!allowed.some(msg => seedError.message?.includes(msg))) {
-          throw new Error(`Gagal menyiapkan entri stok: ${seedError.message}`);
+        if (insertSeedError) {
+          throw new Error(`Gagal menyiapkan entri stok: ${insertSeedError.message}`);
         }
       }
 
