@@ -44,8 +44,8 @@ FOR EACH ROW
 EXECUTE FUNCTION trigger_cascade_recalc();
 
 -- Add index on stock_entries for the unique constraint used in upsert
-CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_entries_date_loc_model 
-ON stock_entries(date, location_id, phone_model_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_entries_date_loc_model_imei 
+ON stock_entries(date, location_id, phone_model_id, imei);
 
 COMMENT ON FUNCTION trigger_cascade_recalc IS 'Trigger function that automatically recalculates stock_entries when stock_events change';
 COMMENT ON TRIGGER trg_cascade_after_stock_event ON stock_events IS 'Automatically triggers cascade recalculation after any stock event change';

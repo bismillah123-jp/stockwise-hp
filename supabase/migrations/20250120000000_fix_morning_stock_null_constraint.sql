@@ -1,6 +1,7 @@
--- Migration: Create cascade recalculation function
--- This function recalculates stock_entries from stock_events for a date range
+-- Fix morning_stock null constraint issue
+-- The problem was that the cascade function was using wrong unique constraint
 
+-- 1. Update the cascade function to use correct unique constraint with IMEI
 CREATE OR REPLACE FUNCTION cascade_recalc_stock(
   p_from_date DATE,
   p_to_date DATE DEFAULT CURRENT_DATE,
@@ -51,6 +52,7 @@ BEGIN
           WHERE date = v_current_date - INTERVAL '1 day'
             AND location_id = v_location_id
             AND phone_model_id = v_phone_model_id
+            AND imei IS NULL  -- Use aggregated entries (NULL imei)
           LIMIT 1;
         ELSE
           -- For the first day, get from existing stock_entries if exists
@@ -59,6 +61,7 @@ BEGIN
           WHERE date = v_current_date
             AND location_id = v_location_id
             AND phone_model_id = v_phone_model_id
+            AND imei IS NULL  -- Use aggregated entries (NULL imei)
           LIMIT 1;
         END IF;
         
@@ -116,7 +119,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a simpler version for single date/location/model
+-- 2. Also update the simpler version
 CREATE OR REPLACE FUNCTION cascade_recalc_stock_simple(
   p_date DATE,
   p_location_id UUID,
@@ -133,7 +136,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 3. Fix any existing entries that might have NULL morning_stock
+UPDATE stock_entries 
+SET morning_stock = COALESCE(morning_stock, 0)
+WHERE morning_stock IS NULL;
+
 -- Add comments
 COMMENT ON FUNCTION cascade_recalc_stock IS 'Recalculates stock_entries from stock_events for a date range. Handles cascade updates for retroactive corrections.';
 COMMENT ON FUNCTION cascade_recalc_stock_simple IS 'Simplified cascade recalc for a single date/location/model combination.';
-

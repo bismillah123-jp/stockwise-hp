@@ -125,6 +125,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
             date,
             location_id: selectedLocation,
             phone_model_id: selectedModel,
+            imei: null,  -- Use NULL for aggregated entries
             morning_stock: 0,
             incoming: 0,
             sold: 0,
