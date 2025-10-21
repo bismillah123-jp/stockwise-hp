@@ -108,12 +108,26 @@ export function StockTable({ selectedDate }: StockTableProps) {
           phone_models(id, brand, model, storage_capacity, color, srp)
         `)
         .eq('date', date)
-        .not('imei', 'is', null)  // Only show entries with actual IMEI (not aggregated)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
 
       let filtered = data || [];
+
+      // Filter out aggregated entries (imei = null) to avoid showing duplicate stock counts
+      // Only show individual entries with specific IMEI or entries with actual stock movements
+      filtered = filtered.filter(entry => {
+        // Show entries with IMEI (individual items)
+        if (entry.imei) return true;
+        
+        // Show aggregated entries only if they have actual stock movements (incoming, sold, etc.)
+        if (entry.incoming > 0 || entry.sold > 0 || entry.returns > 0 || entry.adjustment !== 0) {
+          return true;
+        }
+        
+        // Hide empty aggregated entries
+        return false;
+      });
 
       // Apply search filter
       if (searchTerm) {

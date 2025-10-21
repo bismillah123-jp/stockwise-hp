@@ -67,10 +67,13 @@ export function StockDashboard() {
       
       if (error) throw error;
 
-      const totalMorningStock = data.reduce((sum, entry) => sum + entry.morning_stock, 0);
-      const totalNightStock = data.reduce((sum, entry) => sum + entry.night_stock, 0);
-      const totalSold = data.reduce((sum, entry) => sum + entry.sold, 0);
-      const totalIncoming = data.reduce((sum, entry) => sum + entry.incoming, 0);
+      // Filter out duplicate entries - only count aggregated entries (imei = null) for totals
+      const aggregatedEntries = data.filter(entry => entry.imei === null);
+      
+      const totalMorningStock = aggregatedEntries.reduce((sum, entry) => sum + entry.morning_stock, 0);
+      const totalNightStock = aggregatedEntries.reduce((sum, entry) => sum + entry.night_stock, 0);
+      const totalSold = aggregatedEntries.reduce((sum, entry) => sum + entry.sold, 0);
+      const totalIncoming = aggregatedEntries.reduce((sum, entry) => sum + entry.incoming, 0);
       const totalFinalStock = totalNightStock;
 
       const breakdown: { [location: string]: LocationData } = {};

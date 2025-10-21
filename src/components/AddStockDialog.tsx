@@ -146,20 +146,18 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
-      // Check if this IMEI already exists for the same date
-      const { data: existingToday, error: checkError } = await supabase
+      // Check if this IMEI already exists in stock_events (event-sourcing source of truth)
+      const { data: existingImei, error: checkError } = await supabase
         .from('stock_events')
-        .select('id, event_type')
+        .select('id, event_type, date')
         .eq('imei', imei.trim())
-        .eq('date', date)
-        .in('event_type', ['masuk', 'koreksi'])
-        .limit(1);
+        .in('event_type', ['masuk', 'retur_in', 'koreksi']) // Only check incoming events
+        .maybeSingle();
 
       if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
-
-      // If already exists for today, skip insertion
-      if (existingToday && existingToday.length > 0) {
-        throw new Error(`IMEI ${imei.trim()} sudah ada untuk tanggal ${date}. Gunakan fitur edit untuk mengubah data.`);
+      
+      if (existingImei) {
+        throw new Error(`Stok dengan IMEI ini sudah terdaftar di sistem (${existingImei.event_type} pada ${existingImei.date})`);
       }
 
       // Always use 'masuk' for new stock entries in this dialog
