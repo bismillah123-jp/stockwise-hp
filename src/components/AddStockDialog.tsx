@@ -144,20 +144,36 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
-      // Check if IMEI already exists to determine if this is koreksi or masuk
-      const { data: existingImeiList, error: checkError } = await supabase
+      // Check if IMEI already exists for the same date and event type
+      const { data: existingImeiSameDate, error: checkError } = await supabase
+        .from('stock_events')
+        .select('id, event_type, date')
+        .eq('imei', imei.trim())
+        .eq('date', date)
+        .in('event_type', ['masuk', 'retur_in', 'koreksi'])
+        .maybeSingle();
+      
+      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
+      
+      // If IMEI already exists for the same date and event type, show error
+      if (existingImeiSameDate) {
+        throw new Error(`IMEI ${imei.trim()} sudah ada untuk tanggal ${date} dengan event type ${existingImeiSameDate.event_type}`);
+      }
+
+      // Check if IMEI exists in the system to determine event type
+      const { data: existingImeiList, error: checkError2 } = await supabase
         .from('stock_events')
         .select('id, event_type, date')
         .eq('imei', imei.trim())
         .in('event_type', ['masuk', 'retur_in', 'koreksi'])
         .order('created_at', { ascending: false });
       
-      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
+      if (checkError2) throw new Error(`Gagal memeriksa IMEI: ${checkError2.message}`);
       
       // Get the most recent entry if any exists
       const existingImei = existingImeiList && existingImeiList.length > 0 ? existingImeiList[0] : null;
       
-      // Determine event type based on whether IMEI already exists
+      // Determine event type based on whether IMEI already exists in the system
       const eventType = existingImei ? 'koreksi' : 'masuk';
 
       // 1. Write to stock_events (event-sourcing primary source)
@@ -183,11 +199,15 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       
       // Note: Old direct insert to stock_entries removed - now calculated from events
       // This ensures consistency and enables retroactive corrections
+      
+      // Return event type for success message
+      return { eventType };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const eventType = data?.eventType || 'stok';
       toast({
         title: "Berhasil",
-        description: "Stok berhasil ditambahkan",
+        description: `Stok berhasil ${eventType === 'masuk' ? 'ditambahkan' : 'dikoreksi'}`,
       });
       queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
