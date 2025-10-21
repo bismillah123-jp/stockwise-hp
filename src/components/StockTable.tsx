@@ -108,6 +108,7 @@ export function StockTable({ selectedDate }: StockTableProps) {
           phone_models(id, brand, model, storage_capacity, color, srp)
         `)
         .eq('date', date)
+        .not('imei', 'is', null)  // Only show entries with actual IMEI (not aggregated)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
