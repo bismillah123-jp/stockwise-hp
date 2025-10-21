@@ -19,7 +19,7 @@ export function FabMenu() {
 
   const actions = [
     {
-      label: 'Koreksi Stok',
+      label: 'Tambah/Koreksi Stok',
       icon: Plus,
       dialog: 'addStock',
     },

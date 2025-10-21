@@ -144,6 +144,19 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
+      // Check if IMEI already exists to determine if this is koreksi or masuk
+      const { data: existingImei, error: checkError } = await supabase
+        .from('stock_events')
+        .select('id, event_type, date')
+        .eq('imei', imei.trim())
+        .in('event_type', ['masuk', 'retur_in', 'koreksi'])
+        .maybeSingle();
+
+      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
+      
+      // Determine event type based on whether IMEI already exists
+      const eventType = existingImei ? 'koreksi' : 'masuk';
+
       // 1. Write to stock_events (event-sourcing primary source)
       const { error: eventError } = await supabase
         .from('stock_events')
@@ -152,7 +165,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           imei: imei.trim(),
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          event_type: 'koreksi', // Stock correction/adjustment
+          event_type: eventType, // Dynamic: 'masuk' for new IMEI, 'koreksi' for existing
           qty: quantityNum,
           notes: notes || null,
           metadata: costPriceNum > 0 ? { cost_price: costPriceNum } : {}
@@ -198,9 +211,9 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader className="sticky top-0 bg-background z-10 pb-4">
-          <DialogTitle>Koreksi Stok</DialogTitle>
+          <DialogTitle>Tambah/Koreksi Stok</DialogTitle>
           <DialogDescription>
-            Koreksi stok yang sudah ada di sistem untuk tanggal yang dipilih.
+            Tambah stok baru atau koreksi stok yang sudah ada di sistem. Sistem akan otomatis menentukan jenis operasi berdasarkan IMEI.
           </DialogDescription>
         </DialogHeader>
         
@@ -326,7 +339,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
               disabled={addStockMutation.isPending}
               className="flex-1"
             >
-              {addStockMutation.isPending ? "Memproses..." : "Koreksi Stok"}
+              {addStockMutation.isPending ? "Memproses..." : "Tambah/Koreksi Stok"}
             </Button>
           </div>
         </div>
