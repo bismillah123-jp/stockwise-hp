@@ -145,14 +145,17 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
       // Check if IMEI already exists to determine if this is koreksi or masuk
-      const { data: existingImei, error: checkError } = await supabase
+      const { data: existingImeiList, error: checkError } = await supabase
         .from('stock_events')
         .select('id, event_type, date')
         .eq('imei', imei.trim())
         .in('event_type', ['masuk', 'retur_in', 'koreksi'])
-        .maybeSingle();
-
+        .order('created_at', { ascending: false });
+      
       if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
+      
+      // Get the most recent entry if any exists
+      const existingImei = existingImeiList && existingImeiList.length > 0 ? existingImeiList[0] : null;
       
       // Determine event type based on whether IMEI already exists
       const eventType = existingImei ? 'koreksi' : 'masuk';
