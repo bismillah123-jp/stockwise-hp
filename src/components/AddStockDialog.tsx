@@ -146,8 +146,23 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
+      // Check if this IMEI already exists for the same date
+      const { data: existingToday, error: checkError } = await supabase
+        .from('stock_events')
+        .select('id, event_type')
+        .eq('imei', imei.trim())
+        .eq('date', date)
+        .in('event_type', ['masuk', 'koreksi'])
+        .limit(1);
+
+      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
+
+      // If already exists for today, skip insertion
+      if (existingToday && existingToday.length > 0) {
+        throw new Error(`IMEI ${imei.trim()} sudah ada untuk tanggal ${date}. Gunakan fitur edit untuk mengubah data.`);
+      }
+
       // Always use 'masuk' for new stock entries in this dialog
-      // This dialog is specifically for adding new stock, not correcting existing
       const eventType = 'masuk';
 
       // 1. Write to stock_events (event-sourcing primary source)
@@ -158,7 +173,7 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
           imei: imei.trim(),
           location_id: selectedLocation,
           phone_model_id: selectedModel,
-          event_type: eventType, // Dynamic: 'masuk' for new IMEI, 'koreksi' for existing
+          event_type: eventType,
           qty: quantityNum,
           notes: notes || null,
           metadata: costPriceNum > 0 ? { cost_price: costPriceNum } : {}
