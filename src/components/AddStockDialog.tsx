@@ -106,17 +106,19 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       const quantityNum = 1; // Always 1 since 1 IMEI = 1 stock
 
       // Ensure base stock_entries row exists to avoid NULL morning_stock during cascade
-      const { data: existingEntry, error: findSeedError } = await supabase
+      const { data: existingEntryList, error: findSeedError } = await supabase
         .from('stock_entries')
         .select('id')
         .eq('date', date)
         .eq('location_id', selectedLocation)
         .eq('phone_model_id', selectedModel)
-        .maybeSingle();
+        .eq('imei', null); // Only check aggregated entries (NULL imei)
 
       if (findSeedError) {
         throw new Error(`Gagal memeriksa entri stok: ${findSeedError.message}`);
       }
+
+      const existingEntry = existingEntryList && existingEntryList.length > 0 ? existingEntryList[0] : null;
 
       if (!existingEntry) {
         const { error: insertSeedError } = await supabase
@@ -144,37 +146,9 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       // Parse cost price - remove dots and convert to number
       const costPriceNum = costPrice ? parseInt(costPrice.replace(/\./g, '')) : 0;
 
-      // Check if IMEI already exists for the same date and event type
-      const { data: existingImeiSameDate, error: checkError } = await supabase
-        .from('stock_events')
-        .select('id, event_type, date')
-        .eq('imei', imei.trim())
-        .eq('date', date)
-        .in('event_type', ['masuk', 'retur_in', 'koreksi'])
-        .maybeSingle();
-      
-      if (checkError) throw new Error(`Gagal memeriksa IMEI: ${checkError.message}`);
-      
-      // If IMEI already exists for the same date and event type, show error
-      if (existingImeiSameDate) {
-        throw new Error(`IMEI ${imei.trim()} sudah ada untuk tanggal ${date} dengan event type ${existingImeiSameDate.event_type}`);
-      }
-
-      // Check if IMEI exists in the system to determine event type
-      const { data: existingImeiList, error: checkError2 } = await supabase
-        .from('stock_events')
-        .select('id, event_type, date')
-        .eq('imei', imei.trim())
-        .in('event_type', ['masuk', 'retur_in', 'koreksi'])
-        .order('created_at', { ascending: false });
-      
-      if (checkError2) throw new Error(`Gagal memeriksa IMEI: ${checkError2.message}`);
-      
-      // Get the most recent entry if any exists
-      const existingImei = existingImeiList && existingImeiList.length > 0 ? existingImeiList[0] : null;
-      
-      // Determine event type based on whether IMEI already exists in the system
-      const eventType = existingImei ? 'koreksi' : 'masuk';
+      // Always use 'masuk' for new stock entries in this dialog
+      // This dialog is specifically for adding new stock, not correcting existing
+      const eventType = 'masuk';
 
       // 1. Write to stock_events (event-sourcing primary source)
       const { error: eventError } = await supabase
@@ -199,15 +173,11 @@ export function AddStockDialog({ open, onOpenChange }: AddStockDialogProps) {
       
       // Note: Old direct insert to stock_entries removed - now calculated from events
       // This ensures consistency and enables retroactive corrections
-      
-      // Return event type for success message
-      return { eventType };
     },
-    onSuccess: (data) => {
-      const eventType = data?.eventType || 'stok';
+    onSuccess: () => {
       toast({
         title: "Berhasil",
-        description: `Stok berhasil ${eventType === 'masuk' ? 'ditambahkan' : 'dikoreksi'}`,
+        description: "Stok berhasil ditambahkan",
       });
       queryClient.invalidateQueries({ queryKey: ['stock-entries'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
