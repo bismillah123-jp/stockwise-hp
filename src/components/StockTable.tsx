@@ -158,11 +158,34 @@ export function StockTable({ selectedDate }: StockTableProps) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('delete_stock_entry_and_logs', {
-        entry_id: id,
-      });
+      // Get the stock entry details first
+      const { data: stockEntry, error: fetchError } = await supabase
+        .from('stock_entries')
+        .select('imei, date, location_id, phone_model_id')
+        .eq('id', id)
+        .single();
 
-      if (error) throw error;
+      if (fetchError) throw new Error(`Gagal mengambil data stok: ${fetchError.message}`);
+      if (!stockEntry) throw new Error('Data stok tidak ditemukan');
+
+      // Delete from stock_events first (event-sourcing source of truth)
+      const { error: eventError } = await supabase
+        .from('stock_events')
+        .delete()
+        .eq('imei', stockEntry.imei)
+        .eq('date', stockEntry.date)
+        .eq('location_id', stockEntry.location_id)
+        .eq('phone_model_id', stockEntry.phone_model_id);
+
+      if (eventError) throw new Error(`Gagal menghapus event: ${eventError.message}`);
+
+      // Delete from stock_entries
+      const { error: entryError } = await supabase
+        .from('stock_entries')
+        .delete()
+        .eq('id', id);
+
+      if (entryError) throw new Error(`Gagal menghapus entri stok: ${entryError.message}`);
     },
     onSuccess: () => {
       toast({ title: "Sukses", description: "Entri stok telah berhasil dihapus." });
